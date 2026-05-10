@@ -1,0 +1,11 @@
+.env
+venv/
+node_modules/
+__pycache__/
+*.pt
+datasets/
+outputs/
+weights/
+dist/
+build/
+.DS_Store
