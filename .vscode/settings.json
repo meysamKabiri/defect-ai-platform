@@ -1,0 +1,49 @@
+{
+  // Tailwind CSS v4 + shadcn/ui recommended settings
+  "css.lint.unknownAtRules": "ignore",
+  "css.validate": false,
+
+  "files.associations": {
+    "*.css": "tailwindcss"
+  },
+
+  // Editor settings for better DX
+  "editor.quickSuggestions": {
+    "strings": true
+  },
+
+  "tailwindCSS.experimental.classRegex": [
+    ["clsx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
+  ],
+
+  // Optional but very useful
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+
+  // TypeScript / React settings
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTSdk": true,
+
+  // Exclude common folders
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/node_modules": true,
+    "**/.next": true,
+    "**/dist": true
+  },
+
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.next": true,
+    "**/dist": true
+  }
+}
