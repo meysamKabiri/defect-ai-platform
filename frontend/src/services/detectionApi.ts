@@ -5,6 +5,7 @@ import { setUploadProgress, setUploadStatus } from '@/features/detection/uploadP
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api'
 const DETECTION_ENDPOINT = import.meta.env.VITE_DETECTION_ENDPOINT ?? '/detections'
+const DETECTION_UPLOAD_URL = `${API_BASE_URL.replace(/\/$/, '')}/${DETECTION_ENDPOINT.replace(/^\//, '')}`
 
 type UploadDetectionArg = {
   file: File
@@ -80,7 +81,7 @@ export const detectionApi = createApi({
       async queryFn({ file }, api) {
         try {
           api.dispatch(setUploadStatus('uploading'))
-          const data = await uploadWithProgress(`${API_BASE_URL}${DETECTION_ENDPOINT}`, file, (progress) => {
+          const data = await uploadWithProgress(DETECTION_UPLOAD_URL, file, (progress) => {
             api.dispatch(setUploadProgress(progress))
           })
           api.dispatch(setUploadStatus('complete'))

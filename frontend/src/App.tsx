@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Cpu, ShieldCheck, Sparkles } from 'lucide-react'
 import { DetectionCard } from '@/components/DetectionCard'
 import { ImageViewer } from '@/components/ImageViewer'
@@ -21,39 +21,47 @@ function App() {
   const { progress, status } = useAppSelector((state) => state.uploadProgress)
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const previewUrlRef = useRef<string | null>(null)
   const [result, setResult] = useState<DetectionResult | undefined>()
   const [uploadDetection, { isLoading, error }] = useUploadDetectionMutation()
 
   useEffect(() => {
-    if (!file) {
-      setPreviewUrl(null)
-      return
+    return () => {
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
     }
-
-    const nextPreviewUrl = URL.createObjectURL(file)
-    setPreviewUrl(nextPreviewUrl)
-
-    return () => URL.revokeObjectURL(nextPreviewUrl)
-  }, [file])
+  }, [])
 
   const displayImageUrl = result?.annotatedImageUrl ?? result?.imageUrl ?? previewUrl
   const errorMessage = useMemo(() => getErrorMessage(error), [error])
 
+  const replacePreviewUrl = (nextUrl: string | null) => {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
+    previewUrlRef.current = nextUrl
+    setPreviewUrl(nextUrl)
+  }
+
   const handleFileSelect = (nextFile: File) => {
     setFile(nextFile)
     setResult(undefined)
+    replacePreviewUrl(URL.createObjectURL(nextFile))
     dispatch(resetUploadProgress())
   }
 
   const handleAnalyze = async () => {
     if (!file) return
-    const detectionResult = await uploadDetection({ file }).unwrap()
-    setResult(detectionResult)
+
+    try {
+      const detectionResult = await uploadDetection({ file }).unwrap()
+      setResult(detectionResult)
+    } catch {
+      setResult(undefined)
+    }
   }
 
   const handleClear = () => {
     setFile(null)
     setResult(undefined)
+    replacePreviewUrl(null)
     dispatch(resetUploadProgress())
   }
 
