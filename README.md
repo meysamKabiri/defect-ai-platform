@@ -1,2 +1,13 @@
-# defect-ai-platform
-Production-grade AI-powered industrial defect detection and quality inspection platform built with FastAPI, YOLO, React, WebSockets, and GPU inference.
+# Defect AI Platform
+
+Production-grade AI-powered industrial defect detection and quality inspection system.
+
+Built with:
+- FastAPI
+- YOLOv8
+- React
+- OpenCV
+- PostgreSQL
+- Redis
+- Docker
+- WebSockets
