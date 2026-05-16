@@ -8,7 +8,7 @@ Built with:
 - YOLOv8
 - React
 - OpenCV
-- PostgreSQL
+- MySQL
 - Redis
 - Docker
 - WebSockets
@@ -27,7 +27,7 @@ Built with:
 ### Backend
 
 - FastAPI
-- PostgreSQL
+- MySQL
 - Redis
 
 ### AI

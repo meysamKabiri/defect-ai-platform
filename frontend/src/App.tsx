@@ -8,6 +8,7 @@ import { useAppDispatch, useAppSelector } from '@/app/hooks'
 import { resetUploadProgress } from '@/features/detection/uploadProgressSlice'
 import type { DetectionResult } from '@/features/detection/detectionTypes'
 import { useUploadDetectionMutation } from '@/services/detectionApi'
+import heic2any from 'heic2any'
 
 function getErrorMessage(error: unknown) {
   if (!error || typeof error !== 'object') return undefined
@@ -40,11 +41,48 @@ function App() {
     setPreviewUrl(nextUrl)
   }
 
-  const handleFileSelect = (nextFile: File) => {
-    setFile(nextFile)
+  const handleFileSelect = async (nextFile: File) => {
     setResult(undefined)
-    replacePreviewUrl(URL.createObjectURL(nextFile))
-    dispatch(resetUploadProgress())
+
+    const isHeic =
+      nextFile.type === 'image/heic' ||
+      nextFile.type === 'image/heif' ||
+      nextFile.name.toLowerCase().endsWith('.heic') ||
+      nextFile.name.toLowerCase().endsWith('.heif')
+
+    try {
+      if (isHeic) {
+        const convertedBlob = await heic2any({
+          blob: nextFile,
+          toType: 'image/jpeg',
+          quality: 0.9,
+        })
+
+        const jpegBlob = Array.isArray(convertedBlob)
+          ? convertedBlob[0]
+          : convertedBlob
+
+        const convertedFile = new File(
+          [jpegBlob],
+          nextFile.name.replace(/\.(heic|heif)$/i, '.jpg'),
+          {
+            type: 'image/jpeg',
+          },
+        )
+
+        setFile(convertedFile)
+
+        replacePreviewUrl(URL.createObjectURL(jpegBlob))
+      } else {
+        setFile(nextFile)
+
+        replacePreviewUrl(URL.createObjectURL(nextFile))
+      }
+
+      dispatch(resetUploadProgress())
+    } catch (error) {
+      console.error('HEIC conversion failed:', error)
+    }
   }
 
   const handleAnalyze = async () => {

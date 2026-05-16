@@ -32,7 +32,9 @@ export function UploadZone({
 
   const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
     onDrop,
-    accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.bmp'] },
+    accept: {
+      'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.bmp', '.heic', '.heif'],
+    },
     maxFiles: 1,
     multiple: false,
   })
@@ -60,7 +62,8 @@ export function UploadZone({
             {isDragActive ? 'Drop the image here' : 'Drag, drop, detect'}
           </h2>
           <p className="mt-4 text-sm leading-6 text-slate-300">
-            Upload a production-line image and send it to the detection API. Supports PNG, JPG, WEBP, and BMP.
+            Upload a production-line image and send it to the detection API.
+            Supports PNG, JPG, WEBP, BMP, and HEIC.
           </p>
           <div className="mt-7 inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-slate-950">
             <ImagePlus className="size-4" />
