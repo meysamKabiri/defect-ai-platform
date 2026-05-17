@@ -1,24 +1,16 @@
-from pydantic_settings import BaseSettings
+from sqlalchemy.ext.asyncio import (
+    create_async_engine,
+    async_sessionmaker,
+)
 
+from app.core.config import settings
 
-class Settings(BaseSettings):
-    APP_NAME: str
-    API_V1_PREFIX: str
+engine = create_async_engine(
+    settings.DATABASE_URL,
+    echo=settings.DEBUG,
+)
 
-    DEBUG: bool
-
-    DATABASE_URL: str
-    REDIS_URL: str
-
-    JWT_SECRET: str
-
-    ACCESS_TOKEN_EXPIRE_MINUTES: int
-
-    UPLOAD_DIR: str
-    OUTPUT_DIR: str
-
-    class Config:
-        env_file = ".env"
-
-
-settings = Settings()
+AsyncSessionLocal = async_sessionmaker(
+    engine,
+    expire_on_commit=False,
+)

@@ -3,10 +3,18 @@ import { useDropzone } from 'react-dropzone'
 import { ImagePlus, Loader2, UploadCloud, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+type UploadStatus =
+  | 'idle'
+  | 'uploading'
+  | 'queued'
+  | 'processing'
+  | 'completed'
+  | 'failed'
+
 type UploadZoneProps = {
   file: File | null
   progress: number
-  status: 'idle' | 'uploading' | 'processing' | 'complete' | 'error'
+  status: UploadStatus
   isLoading: boolean
   onFileSelect: (file: File) => void
   onAnalyze: () => void
@@ -39,7 +47,33 @@ export function UploadZone({
     multiple: false,
   })
 
-  const progressLabel = status === 'processing' ? 'Processing detection' : `${progress}% uploaded`
+
+
+
+  const progressLabelMap = {
+    idle: 'Waiting for upload',
+    uploading: `${progress}% uploaded`,
+    queued: 'Queued for AI processing',
+    processing: 'AI is analyzing image',
+    completed: 'Detection completed',
+    failed: 'Detection failed',
+  }
+
+  const progressLabel =
+    progressLabelMap[status]
+
+
+  const progressValueMap = {
+    idle: 0,
+    uploading: progress,
+    queued: 25,
+    processing: 70,
+    completed: 100,
+    failed: 100,
+  }
+
+  const progressValue =
+    progressValueMap[status]
 
   return (
     <section className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-4 shadow-2xl shadow-black/30 backdrop-blur md:p-5">
@@ -109,8 +143,20 @@ export function UploadZone({
               <div className="h-3 overflow-hidden rounded-full bg-white/10">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-amber-200 via-orange-400 to-red-400 transition-all duration-300"
-                  style={{ width: `${status === 'processing' ? 100 : progress}%` }}
+
+                  style={{
+                    width: `${progressValue}%`,
+                  }}
                 />
+              </div>
+              <div className="mt-3 flex items-center gap-2 text-sm text-slate-300">
+                {(status === 'uploading' ||
+                  status === 'queued' ||
+                  status === 'processing') && (
+                    <Loader2 className="size-4 animate-spin" />
+                  )}
+
+                <span>{progressLabel}</span>
               </div>
             </div>
           )}

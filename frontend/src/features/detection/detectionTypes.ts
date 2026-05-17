@@ -1,68 +1,84 @@
+export type DetectionStatus =
+  | "idle"
+  | "uploading"
+  | "queued"
+  | "processing"
+  | "completed"
+  | "failed";
+
+export type BoundingBox = {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+};
+
 export type DetectionBox = {
-  id?: string | number
-  label: string
-  confidence: number
-  x: number
-  y: number
-  width: number
-  height: number
-  severity?: 'low' | 'medium' | 'high' | 'critical' | string
-}
+  class_id: number;
+
+  class_name: string;
+
+  confidence: number;
+
+  bbox: BoundingBox;
+};
 
 export type DetectionResult = {
-  id?: string | number
-  imageId?: string
-  detectionId?: string
-  jobId?: string
-  status?: DetectionStatus
-  streamUrl?: string
-  filename?: string
-  imageUrl?: string
-  annotatedImageUrl?: string
-  inferenceMs?: number
-  modelVersion?: string
-  defects: DetectionBox[]
-  summary?: string
-  createdAt?: string
-}
+  status: DetectionStatus;
 
-export type UploadDetectionResponse = DetectionResult
+  imageUrl?: string;
 
-export type DetectionStatus = 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled'
+  annotatedImageUrl?: string;
 
-export type UploadJobResponse = {
-  image_id: string
-  detection_id: string
-  job_id: string
-  status: DetectionStatus
-  stream_url: string
-}
+  defects: DetectionBox[];
+
+  inferenceMs?: number;
+
+  modelVersion?: string;
+
+  error?: string;
+};
+
+export type UploadDetectionResponse = {
+  success: boolean;
+
+  job_id: string;
+
+  status: DetectionStatus;
+
+  message: string;
+};
+
+export type DetectionJobResponse = {
+  status: DetectionStatus;
+
+  detections?: DetectionBox[];
+
+  image_url?: string;
+
+  annotated_image_url?: string;
+
+  inference_ms?: number;
+
+  model_version?: string;
+
+  error?: string;
+};
 
 export type DetectionHistoryItem = {
-  id: string
-  image_id: string
-  status: DetectionStatus
-  model_name?: string | null
-  model_version?: string | null
-  confidence?: number | null
-  defect_type?: string | null
-  result?: Record<string, unknown> | null
-  error_message?: string | null
-  created_at: string
-  completed_at?: string | null
-}
+  id: string;
+
+  status: DetectionStatus;
+
+  image_url?: string;
+
+  annotated_image_url?: string;
+
+  created_at: string;
+};
 
 export type DetectionHistoryResponse = {
-  items: DetectionHistoryItem[]
-  limit: number
-  offset: number
-  total: number
-}
+  items: DetectionHistoryItem[];
 
-export type DetectionStreamEvent = {
-  type: string
-  detectionId: string
-  progress?: number
-  result?: Record<string, unknown>
-  error?: string
-}
+  total: number;
+};
