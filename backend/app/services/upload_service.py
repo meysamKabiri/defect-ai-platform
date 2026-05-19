@@ -30,12 +30,18 @@ class UploadService:
         background_tasks: BackgroundTasks,
     ):
 
-        saved_image = await self.image_service.save_image(file)
+        try:
+            saved_image = await self.image_service.save_image(file)
+
+        except Exception as e:
+            raise ValueError(f"Failed to save image: {str(e)}")
 
         job_id = str(uuid.uuid4())
 
         jobs[job_id] = {
+            "job_id": job_id,
             "status": "queued",
+            "filename": file.filename,
         }
 
         background_tasks.add_task(
