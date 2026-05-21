@@ -2,17 +2,20 @@ import uuid
 
 from fastapi import (
     UploadFile,
-    BackgroundTasks,
 )
 
-from app.core.job_store import jobs
+from app.core.job_store import (
+    create_job,
+)
+
+from app.core.queue import queue
+
+from app.tasks import (
+    process_detection_task,
+)
 
 from app.services.image_service import (
     ImageService,
-)
-
-from app.services.detection_pipeline_service import (
-    DetectionPipelineService,
 )
 
 
@@ -22,30 +25,19 @@ class UploadService:
 
         self.image_service = ImageService()
 
-        self.pipeline_service = DetectionPipelineService()
-
     async def upload_image(
         self,
         file: UploadFile,
-        background_tasks: BackgroundTasks,
     ):
 
-        try:
-            saved_image = await self.image_service.save_image(file)
-
-        except Exception as e:
-            raise ValueError(f"Failed to save image: {str(e)}")
+        saved_image = await self.image_service.save_image(file)
 
         job_id = str(uuid.uuid4())
 
-        jobs[job_id] = {
-            "job_id": job_id,
-            "status": "queued",
-            "filename": file.filename,
-        }
+        create_job(job_id)
 
-        background_tasks.add_task(
-            self.pipeline_service.process_detection,
+        queue.enqueue(
+            process_detection_task,
             job_id,
             saved_image["file_path"],
             saved_image["file_url"],
@@ -55,5 +47,4 @@ class UploadService:
             "success": True,
             "job_id": job_id,
             "status": "queued",
-            "message": "Detection started",
         }

@@ -1,0 +1,166 @@
+defect-ai-platform/
+├── .vscode/
+│   └── settings.json
+├── alembic/
+├── backend/
+│   ├── alembic/
+│   │   ├── versions/
+│   │   ├── env.py
+│   │   ├── README
+│   │   └── script.py.mako
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── dependencies/
+│   │   │   ├── routes/
+│   │   │   │   └── detection.py
+│   │   │   └── router.py
+│   │   ├── core/
+│   │   │   ├── config.py
+│   │   │   ├── database.py
+│   │   │   └── job_store.py
+│   │   ├── db/
+│   │   │   ├── models/
+│   │   │   └── repositories/
+│   │   ├── integrations/
+│   │   ├── ml/
+│   │   │   └── yolo_detector.py
+│   │   ├── models/
+│   │   │   └── best.pt
+│   │   ├── schemas/
+│   │   │   ├── detection.py
+│   │   │   └── upload.py
+│   │   ├── services/
+│   │   │   ├── annotation_service.py
+│   │   │   ├── detection_pipeline_service.py
+│   │   │   ├── image_service.py
+│   │   │   └── upload_service.py
+│   │   ├── utils/
+│   │   │   └── files.py
+│   │   ├── workers/
+│   │   ├── main.py
+│   │   └── tasks.py
+│   ├── docker/
+│   │   ├── Dockerfile.api
+│   │   └── Dockerfile.worker
+│   ├── logs/
+│   ├── outputs/
+│   ├── scripts/
+│   ├── tests/
+│   │   ├── api/
+│   │   ├── ml/
+│   │   └── services/
+│   ├── uploads/
+│   ├── .env
+│   ├── .env.example
+│   ├── alembic.ini
+│   ├── requirements.txt
+│   ├── yolov8m.pt
+│   ├── yolov8n.pt
+│   └── yolov8x.pt
+├── frontend/
+│   ├── public/
+│   │   ├── favicon.svg
+│   │   └── icons.svg
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── hooks.ts
+│   │   │   └── store.ts
+│   │   ├── assets/
+│   │   │   ├── hero.png
+│   │   │   ├── react.svg
+│   │   │   └── vite.svg
+│   │   ├── components/
+│   │   │   ├── common/
+│   │   │   ├── layout/
+│   │   │   ├── DetectionCard.tsx
+│   │   │   ├── ImageViewer.tsx
+│   │   │   ├── StatsCard.tsx
+│   │   │   └── UploadZone.tsx
+│   │   ├── features/
+│   │   │   ├── dashboard/
+│   │   │   ├── detection/
+│   │   │   │   ├── detectionTypes.ts
+│   │   │   │   └── uploadProgressSlice.ts
+│   │   │   ├── jobs/
+│   │   │   └── upload/
+│   │   ├── lib/
+│   │   │   ├── config.ts
+│   │   │   ├── image.ts
+│   │   │   └── utils.ts
+│   │   ├── pages/
+│   │   ├── routes/
+│   │   ├── services/
+│   │   │   └── detectionApi.ts
+│   │   ├── styles/
+│   │   ├── test/
+│   │   ├── types/
+│   │   │   └── upload.ts
+│   │   ├── utils/
+│   │   ├── App.tsx
+│   │   ├── index.css
+│   │   └── main.tsx
+│   ├── .env
+│   ├── .env.example
+│   ├── .gitignore
+│   ├── components.json
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── README.md
+│   ├── tsconfig.app.json
+│   ├── tsconfig.json
+│   ├── tsconfig.node.json
+│   └── vite.config.ts
+├── ml/
+│   ├── configs/
+│   ├── datasets/
+│   │   ├── neu/
+│   │   │   ├── train/
+│   │   │   │   ├── annotations/
+│   │   │   │   └── images/
+│   │   │   │       ├── crazing/
+│   │   │   │       ├── inclusion/
+│   │   │   │       ├── patches/
+│   │   │   │       ├── pitted_surface/
+│   │   │   │       ├── rolled-in_scale/
+│   │   │   │       └── scratches/
+│   │   │   └── validation/
+│   │   │       ├── annotations/
+│   │   │       └── images/
+│   │   │           ├── crazing/
+│   │   │           ├── inclusion/
+│   │   │           ├── patches/
+│   │   │           ├── pitted_surface/
+│   │   │           ├── rolled-in_scale/
+│   │   │           └── scratches/
+│   │   └── neu-yolo/
+│   │       ├── images/
+│   │       │   ├── train/
+│   │       │   └── val/
+│   │       ├── labels/
+│   │       └── data.yaml
+│   ├── evaluation/
+│   ├── models/
+│   ├── notebooks/
+│   ├── runs/
+│   │   └── detect/
+│   │       ├── predict/
+│   │       └── train/
+│   │           ├── weights/
+│   │           │   ├── best.pt
+│   │           │   └── last.pt
+│   │           ├── args.yaml
+│   │     
+│   ├── scripts/
+│   │   └── convert_voc_to_yolo.py
+│   ├── training/
+│   ├── requirements.txt
+│   ├── test.py
+│   └── yolov8n.pt
+├── .env
+├── .env.example
+├── .gitignore
+├── docker-compose.yml
+├── PLAN.md
+└── README.md
