@@ -5,7 +5,7 @@ from app.ml.yolo_detector import run_detection
 
 
 class DetectionPipelineService:
-    async def process_detection(
+    def process_detection(
         self,
         job_id: str,
         image_path: str,

@@ -1,7 +1,13 @@
 from pydantic_settings import BaseSettings
+from pydantic_settings import SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore",
+    )
+
     APP_NAME: str
     API_V1_PREFIX: str
 
@@ -17,8 +23,18 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str
     OUTPUT_DIR: str
 
-    class Config:
-        env_file = ".env"
+    ALLOWED_ORIGINS: list[str] = []
+    MAX_UPLOAD_SIZE_MB: int = 20
+    ALLOWED_IMAGE_EXTENSIONS: list[str] = [
+        ".jpg",
+        ".jpeg",
+        ".png",
+    ]
+
+    MYSQL_ROOT_PASSWORD: str | None = None
+    MYSQL_DATABASE: str | None = None
+    MYSQL_USER: str | None = None
+    MYSQL_PASSWORD: str | None = None
 
 
 settings = Settings()

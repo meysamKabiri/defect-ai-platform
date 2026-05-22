@@ -48,10 +48,10 @@ export function DetectionCard({ result, error, isLoading }: DetectionCardProps) 
           </div>
 
           {defects.map((defect, index) => (
-            <div key={`${defect.label}-${defect.id ?? index}`} className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+            <div key={`${defect.label ?? defect.class_name}-${defect.id ?? index}`} className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="font-bold text-white">{defect.label}</p>
+                  <p className="font-bold text-white">{defect.label ?? defect.class_name}</p>
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{defect.severity ?? 'unclassified'}</p>
                 </div>
                 <span className="rounded-full bg-amber-300 px-3 py-1 text-xs font-black text-slate-950">

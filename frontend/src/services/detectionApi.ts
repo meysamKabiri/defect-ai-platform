@@ -1,7 +1,7 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type {
   UploadDetectionResponse,
-  UploadJobResponse,
+  DetectionJobResponse,
 } from "@/features/detection/detectionTypes";
 
 const API_BASE =
@@ -42,7 +42,7 @@ export const detectionApi = createApi({
         };
       },
     }),
-    getDetectionJob: builder.query<UploadJobResponse, string>({
+    getDetectionJob: builder.query<DetectionJobResponse, string>({
       query: (jobId) => `/detect/jobs/${jobId}`,
     }),
   }),

@@ -14,13 +14,27 @@ export type BoundingBox = {
 };
 
 export type DetectionBox = {
+  id?: string;
+
   class_id: number;
 
   class_name: string;
 
+  label?: string;
+
+  severity?: string;
+
   confidence: number;
 
   bbox: BoundingBox;
+
+  x?: number;
+
+  y?: number;
+
+  width?: number;
+
+  height?: number;
 };
 
 export type DetectionResult = {
@@ -37,6 +51,8 @@ export type DetectionResult = {
   modelVersion?: string;
 
   error?: string;
+
+  summary?: string;
 };
 
 export type UploadDetectionResponse = {
@@ -50,6 +66,8 @@ export type UploadDetectionResponse = {
 };
 
 export type DetectionJobResponse = {
+  job_id?: string;
+
   status: DetectionStatus;
 
   detections?: DetectionBox[];

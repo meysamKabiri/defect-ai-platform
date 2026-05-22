@@ -27,20 +27,34 @@ def run_detection(image_path: str, output_filename: str | None = None) -> dict:
     result = results[0]
 
     detections = []
+    image_height, image_width = result.orig_shape
+
     for box in result.boxes:
         cls_id = int(box.cls[0])
         confidence = float(box.conf[0])
         x1, y1, x2, y2 = box.xyxy[0].tolist()
+        left = (x1 / image_width) * 100
+        top = (y1 / image_height) * 100
+        right = (x2 / image_width) * 100
+        bottom = (y2 / image_height) * 100
 
         detections.append(
             {
                 "id": str(uuid.uuid4()),
+                "class_id": cls_id,
+                "class_name": CLASS_NAMES.get(cls_id, "unknown"),
                 "label": CLASS_NAMES.get(cls_id, "unknown"),
                 "confidence": confidence,
-                "x": x1,
-                "y": y1,
-                "width": x2 - x1,
-                "height": y2 - y1,
+                "bbox": {
+                    "x1": left,
+                    "y1": top,
+                    "x2": right,
+                    "y2": bottom,
+                },
+                "x": left,
+                "y": top,
+                "width": right - left,
+                "height": bottom - top,
             }
         )
 
