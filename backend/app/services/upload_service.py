@@ -1,19 +1,13 @@
+import logging
 import uuid
 
-from fastapi import (
-    UploadFile,
-    BackgroundTasks,
-)
+from fastapi import UploadFile
 
-from app.core.job_store import jobs
+from app.core.job_store import create_job
+from app.core.queue import queue
+from app.services.image_service import ImageService
 
-from app.services.image_service import (
-    ImageService,
-)
-
-from app.services.detection_pipeline_service import (
-    DetectionPipelineService,
-)
+logger = logging.getLogger(__name__)
 
 
 class UploadService:
@@ -22,38 +16,43 @@ class UploadService:
 
         self.image_service = ImageService()
 
-        self.pipeline_service = DetectionPipelineService()
-
     async def upload_image(
         self,
         file: UploadFile,
-        background_tasks: BackgroundTasks,
     ):
 
-        try:
-            saved_image = await self.image_service.save_image(file)
-
-        except Exception as e:
-            raise ValueError(f"Failed to save image: {str(e)}")
+        saved_image = await self.image_service.save_image(file)
 
         job_id = str(uuid.uuid4())
 
-        jobs[job_id] = {
-            "job_id": job_id,
-            "status": "queued",
-            "filename": file.filename,
-        }
+        try:
 
-        background_tasks.add_task(
-            self.pipeline_service.process_detection,
+            rq_job = queue.enqueue(
+                "app.tasks.process_detection_task",
+                job_id,
+                saved_image["file_path"],
+                saved_image["file_url"],
+                job_timeout=600,
+                failure_ttl=86400,
+                result_ttl=86400,
+            )
+
+        except Exception as e:
+
+            logger.exception("Failed to enqueue detection job")
+
+            raise RuntimeError(str(e))
+
+        create_job(
             job_id,
-            saved_image["file_path"],
-            saved_image["file_url"],
+            rq_job_id=rq_job.id,
         )
+
+        logger.info(f"Detection job queued: {job_id}")
 
         return {
             "success": True,
             "job_id": job_id,
             "status": "queued",
-            "message": "Detection started",
+            "message": "Detection job queued",
         }

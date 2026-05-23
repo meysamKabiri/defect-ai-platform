@@ -1,0 +1,20 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Allow choosing requirements file via build arg (default = CPU)
+ARG REQUIREMENTS_FILE=worker.txt
+
+COPY requirements/${REQUIREMENTS_FILE} ./worker.txt
+
+RUN pip install --no-cache-dir \
+    --timeout=300 \
+    --retries=5 \
+    -r worker.txt
+
+COPY . /app
+
+CMD ["python", "-m", "app.workers.worker"]

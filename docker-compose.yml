@@ -1,67 +1,79 @@
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: defect-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  mysql:
+    image: mysql:8.4
+    container_name: defect-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-defect_ai}
+      MYSQL_USER: ${MYSQL_USER:-app_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-app_password}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u$$MYSQL_USER -p$$MYSQL_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   api:
     build:
       context: ./backend
       dockerfile: docker/Dockerfile.api
-    env_file: .env
+
+    container_name: defect-api
+
     ports:
       - "8000:8000"
+
+    volumes:
+      - ./backend:/app
+
+    env_file:
+      - ./backend/.env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: mysql+aiomysql://${MYSQL_USER:-app_user}:${MYSQL_PASSWORD:-app_password}@mysql:3306/${MYSQL_DATABASE:-defect_ai}
+
     depends_on:
-      mysql:
-        condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - upload_data:/tmp/defect-ai-uploads
+      mysql:
+        condition: service_healthy
 
   worker:
     build:
       context: ./backend
       dockerfile: docker/Dockerfile.worker
-    env_file: .env
+
+    container_name: defect-worker
+
+    volumes:
+      - ./backend:/app
+
+    env_file:
+      - ./backend/.env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: mysql+aiomysql://${MYSQL_USER:-app_user}:${MYSQL_PASSWORD:-app_password}@mysql:3306/${MYSQL_DATABASE:-defect_ai}
+
     depends_on:
-      mysql:
-        condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - upload_data:/tmp/defect-ai-uploads
-
-  mysql:
-    image: mysql:8.4
-    environment:
-      MYSQL_DATABASE: defect_ai
-      MYSQL_USER: root
-      MYSQL_PASSWORD: Hello1234#
-      MYSQL_ROOT_PASSWORD: defect_ai_root_password
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "mysqladmin ping -h 127.0.0.1 -u defect_ai -pHello1234# --silent",
-        ]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-  redis:
-    image: redis:7-alpine
-    command: redis-server --appendonly yes
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+      mysql:
+        condition: service_healthy
 
 volumes:
   mysql_data:
-  redis_data:
-  upload_data:

@@ -8,9 +8,10 @@ import {
 
 
 import {
-  Cpu,
-  ShieldCheck,
-  Sparkles,
+  Activity,
+  CheckCircle2,
+  Clock3,
+  Database,
 } from 'lucide-react'
 
 import heic2any from 'heic2any'
@@ -46,6 +47,7 @@ import {
 import { resetUploadProgress } from '@/features/detection/uploadProgressSlice'
 
 import type {
+  DetectionJobResponse,
   DetectionResult,
   DetectionStatus,
 } from '@/features/detection/detectionTypes'
@@ -109,11 +111,6 @@ function App() {
     useState<string | null>(null)
 
   const [
-    completedResult,
-    setCompletedResult,
-  ] = useState<DetectionResult>()
-
-  const [
     jobErrorMessage,
     setJobErrorMessage,
   ] = useState<string>()
@@ -141,59 +138,6 @@ function App() {
       skipPollingIfUnfocused: true,
     },
   )
-  useEffect(() => {
-    if (!jobId || !jobData) {
-      return
-    }
-
-    if (
-      jobData.status ===
-      'completed'
-    ) {
-      setCompletedResult({
-        status: jobData.status,
-
-        imageUrl:
-          jobData.image_url,
-
-        annotatedImageUrl:
-          jobData.annotated_image_url,
-
-        defects:
-          jobData.detections ??
-          [],
-
-        inferenceMs:
-          jobData.inference_ms,
-
-        modelVersion:
-          jobData.model_version,
-      })
-
-      setJobErrorMessage(
-        undefined,
-      )
-
-      setJobId(null)
-    }
-
-    if (
-      jobData.status ===
-      'failed'
-    ) {
-      setCompletedResult(
-        undefined,
-      )
-
-      setJobErrorMessage(
-        jobData.error ??
-        'Unable to analyze this image.',
-      )
-
-      setJobId(null)
-    }
-  }, [jobData, jobId])
-
 
 
   useEffect(() => {
@@ -220,24 +164,68 @@ function App() {
       ? 'uploading'
       : jobId
         ? jobData?.status ??
-          'queued'
-        : completedResult
-          ? 'completed'
-          : jobErrorMessage
-            ? 'failed'
-            : 'idle'
+        'queued'
+        : jobErrorMessage
+          ? 'failed'
+          : 'idle'
 
   const result =
-    completedResult
+    jobData?.status ===
+      'completed'
+      ? {
+        status: jobData.status,
+
+        jobId: jobData.job_id,
+
+        rqJobId: jobData.rq_job_id,
+
+        imageUrl:
+          jobData.image_url,
+
+        annotatedImageUrl:
+          jobData.result
+            ?.annotated_image_url ??
+          jobData.annotated_image_url,
+
+        defects:
+          jobData.result
+            ?.detections ??
+          jobData.detections ??
+          [],
+
+        inferenceMs:
+          jobData.inference_ms,
+
+        processingTimeSeconds:
+          jobData.processing_time_seconds,
+
+        modelVersion:
+          jobData.model_version,
+      } satisfies DetectionResult
+      : undefined
+
+  const currentJob =
+    jobData ??
+    (jobId
+      ? ({
+        job_id: jobId,
+        status: 'queued',
+      } satisfies DetectionJobResponse)
+      : undefined)
 
   const displayImageUrl =
     getImageUrl(
       result?.annotatedImageUrl ??
+      result?.imageUrl ??
       previewUrl,
     )
 
   const errorMessage =
     jobErrorMessage ??
+    (jobData?.status === 'failed'
+      ? jobData.error ??
+      'Unable to analyze this image.'
+      : undefined) ??
     getErrorMessage(error)
 
   const replacePreviewUrl = (
@@ -264,9 +252,6 @@ function App() {
       nextFile: File,
     ) => {
       setJobId(null)
-      setCompletedResult(
-        undefined,
-      )
       setJobErrorMessage(
         undefined,
       )
@@ -355,9 +340,6 @@ function App() {
       if (!file) return
 
       try {
-        setCompletedResult(
-          undefined,
-        )
         setJobErrorMessage(
           undefined,
         )
@@ -382,10 +364,6 @@ function App() {
 
     setJobId(null)
 
-    setCompletedResult(
-      undefined,
-    )
-
     setJobErrorMessage(
       undefined,
     )
@@ -400,87 +378,104 @@ function App() {
   }
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#07110f] text-slate-100">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(251,191,36,0.24),transparent_32%),radial-gradient(circle_at_86%_4%,rgba(45,212,191,0.16),transparent_28%),linear-gradient(135deg,#07110f_0%,#0f172a_48%,#1c1917_100%)]" />
-
-      <div className="pointer-events-none fixed inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(255,255,255,.8)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.8)_1px,transparent_1px)] [background-size:42px_42px]" />
-
-      <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-8 px-5 py-8 md:px-8 lg:py-12">
-        <header className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
+    <main className="min-h-screen bg-[#05070a] text-slate-100">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-5 px-4 py-4 sm:px-6 lg:px-8">
+        <header className="flex flex-col gap-4 border-b border-slate-800 pb-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-amber-200/20 bg-amber-200/10 px-4 py-2 text-sm font-bold text-amber-100">
-              <Sparkles className="size-4" />
-
-              AI visual inspection
-              console
-            </div>
-
-            <h1 className="max-w-4xl text-5xl font-black leading-[0.95] tracking-[-0.06em] text-white md:text-7xl">
-              Detect defects before
-              they leave the line.
+            <p className="text-xs font-semibold uppercase text-cyan-300/80">
+              Defect AI Platform
+            </p>
+            <h1 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">
+              Inspection workspace
             </h1>
-
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-              Drop an image,
-              preview it instantly,
-              track AI processing,
-              and review detection
-              results in one
-              focused dashboard.
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+              Upload a production image, track the queued inference job, and
+              review every field returned by the detection backend.
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-5 backdrop-blur">
-              <Cpu className="mb-5 size-8 text-teal-200" />
-
-              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">
-                Pipeline
-              </p>
-
-              <p className="mt-2 text-xl font-black text-white">
-                RTK Query +
-                Redux Toolkit
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:min-w-[520px]">
+            <div className="rounded-lg border border-slate-800 bg-slate-950 p-3">
+              <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                <Activity className="size-3.5" />
+                Status
+              </div>
+              <p className="mt-2 truncate text-sm font-semibold capitalize text-white">
+                {uploadStatus}
               </p>
             </div>
 
-            <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-5 backdrop-blur">
-              <ShieldCheck className="mb-5 size-8 text-amber-200" />
-
-              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-400">
-                Purpose
+            <div className="rounded-lg border border-slate-800 bg-slate-950 p-3">
+              <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                <Database className="size-3.5" />
+                Job
+              </div>
+              <p className="mt-2 truncate text-sm font-semibold text-white">
+                {currentJob?.job_id ?? 'No job'}
               </p>
+            </div>
 
-              <p className="mt-2 text-xl font-black text-white">
-                Industrial QA
-                detection
+            <div className="rounded-lg border border-slate-800 bg-slate-950 p-3">
+              <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                <CheckCircle2 className="size-3.5" />
+                Defects
+              </div>
+              <p className="mt-2 text-sm font-semibold text-white">
+                {result?.defects.length ?? 0}
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-slate-800 bg-slate-950 p-3">
+              <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                <Clock3 className="size-3.5" />
+                Runtime
+              </div>
+              <p className="mt-2 text-sm font-semibold text-white">
+                {result?.processingTimeSeconds
+                  ? `${result.processingTimeSeconds}s`
+                  : '--'}
               </p>
             </div>
           </div>
         </header>
 
-        <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-          <UploadZone
-            file={file}
-            progress={progress}
-            status={uploadStatus}
-            isLoading={
-              isUploading ||
-              isAnalyzing
-            }
-            onFileSelect={
-              handleFileSelect
-            }
-            onAnalyze={
-              handleAnalyze
-            }
-            onClear={handleClear}
-          />
+        <section className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+          <aside className="space-y-5">
+            <UploadZone
+              file={file}
+              progress={progress}
+              status={uploadStatus}
+              isLoading={
+                isUploading ||
+                isAnalyzing
+              }
+              onFileSelect={
+                handleFileSelect
+              }
+              onAnalyze={
+                handleAnalyze
+              }
+              onClear={handleClear}
+            />
 
-          <div className="space-y-6">
             <Suspense
               fallback={
-                <div className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-4 text-center text-slate-400">
+                <div className="rounded-lg border border-slate-800 bg-slate-950 p-4 text-sm text-slate-500">
+                  Loading stats...
+                </div>
+              }
+            >
+              <StatsCard
+                result={result}
+                job={currentJob}
+              />
+            </Suspense>
+          </aside>
+
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+            <Suspense
+              fallback={
+                <div className="rounded-lg border border-slate-800 bg-slate-950 p-4 text-sm text-slate-500">
                   Loading viewer...
                 </div>
               }
@@ -499,28 +494,17 @@ function App() {
               />
             </Suspense>
 
-            <Suspense
-              fallback={
-                <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-4 text-center text-slate-400">
-                  Loading stats...
-                </div>
+            <DetectionCard
+              result={result}
+              job={currentJob}
+              error={errorMessage}
+              isLoading={
+                isUploading ||
+                isAnalyzing
               }
-            >
-              <StatsCard
-                result={result}
-              />
-            </Suspense>
+            />
           </div>
         </section>
-
-        <DetectionCard
-          result={result}
-          error={errorMessage}
-          isLoading={
-            isUploading ||
-            isAnalyzing
-          }
-        />
       </div>
     </main>
   )

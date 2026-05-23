@@ -14,17 +14,35 @@ export type BoundingBox = {
 };
 
 export type DetectionBox = {
+  id?: string;
+
   class_id: number;
 
   class_name: string;
 
+  label?: string;
+
+  severity?: string;
+
   confidence: number;
 
   bbox: BoundingBox;
+
+  x?: number;
+
+  y?: number;
+
+  width?: number;
+
+  height?: number;
 };
 
 export type DetectionResult = {
   status: DetectionStatus;
+
+  jobId?: string;
+
+  rqJobId?: string;
 
   imageUrl?: string;
 
@@ -34,9 +52,13 @@ export type DetectionResult = {
 
   inferenceMs?: number;
 
+  processingTimeSeconds?: number;
+
   modelVersion?: string;
 
   error?: string;
+
+  summary?: string;
 };
 
 export type UploadDetectionResponse = {
@@ -50,15 +72,26 @@ export type UploadDetectionResponse = {
 };
 
 export type DetectionJobResponse = {
+  job_id?: string;
+
   status: DetectionStatus;
 
-  detections?: DetectionBox[];
+  rq_job_id?: string;
 
   image_url?: string;
 
   annotated_image_url?: string;
 
+  detections?: DetectionBox[];
+
+  result?: {
+    detections?: DetectionBox[];
+    annotated_image_url?: string;
+  };
+
   inference_ms?: number;
+
+  processing_time_seconds?: number;
 
   model_version?: string;
 

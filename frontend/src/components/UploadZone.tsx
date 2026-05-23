@@ -41,7 +41,7 @@ export function UploadZone({
   const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
     onDrop,
     accept: {
-      'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.bmp', '.heic', '.heif'],
+      'image/*': ['.png', '.jpg', '.jpeg', '.heic', '.heif'],
     },
     maxFiles: 1,
     multiple: false,
@@ -76,30 +76,52 @@ export function UploadZone({
     progressValueMap[status]
 
   return (
-    <section className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-4 shadow-2xl shadow-black/30 backdrop-blur md:p-5">
+    <section className="rounded-lg border border-slate-800 bg-slate-950 p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-white">
+            Input image
+          </h2>
+          <p className="mt-1 text-xs text-slate-500">
+            Backend accepts JPG, JPEG, and PNG.
+          </p>
+        </div>
+
+        {file && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="inline-flex size-9 items-center justify-center rounded-md border border-slate-800 text-slate-500 transition hover:bg-slate-900 hover:text-white"
+            aria-label="Clear selected image"
+          >
+            <X className="size-4" />
+          </button>
+        )}
+      </div>
+
       <div
         {...getRootProps()}
         className={cn(
-          'group relative grid min-h-[320px] cursor-pointer place-items-center overflow-hidden rounded-[1.5rem] border border-dashed border-white/20 bg-slate-950/70 p-8 text-center transition duration-300',
-          'before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_50%_0%,rgba(250,204,21,0.18),transparent_42%)] before:opacity-70',
-          isDragActive && 'scale-[0.99] border-amber-300 bg-amber-300/10',
-          isDragReject && 'border-red-400 bg-red-500/10',
+          'group grid min-h-[220px] cursor-pointer place-items-center rounded-lg border border-dashed border-slate-700 bg-slate-900/60 p-6 text-center transition',
+          isDragActive && 'border-cyan-300 bg-cyan-950/20',
+          isDragReject && 'border-red-400 bg-red-950/20',
         )}
       >
         <input {...getInputProps()} />
-        <div className="relative z-10 flex max-w-md flex-col items-center">
-          <div className="mb-6 grid size-20 place-items-center rounded-3xl border border-amber-200/20 bg-amber-300/10 text-amber-200 shadow-lg shadow-amber-900/20 transition group-hover:rotate-3 group-hover:scale-105">
-            <UploadCloud className="size-10" />
+        <div className="flex max-w-xs flex-col items-center">
+          <div className="mb-4 grid size-12 place-items-center rounded-lg border border-slate-800 bg-slate-950 text-slate-400 transition group-hover:text-cyan-300">
+            <UploadCloud className="size-5" />
           </div>
-          <p className="text-sm font-semibold uppercase tracking-[0.35em] text-amber-200/80">Defect scan input</p>
-          <h2 className="mt-3 text-3xl font-black tracking-tight text-white md:text-4xl">
-            {isDragActive ? 'Drop the image here' : 'Drag, drop, detect'}
-          </h2>
-          <p className="mt-4 text-sm leading-6 text-slate-300">
-            Upload a production-line image and send it to the detection API.
-            Supports PNG, JPG, WEBP, BMP, and HEIC.
+
+          <p className="text-base font-semibold text-white">
+            {isDragActive ? 'Drop image' : 'Drop image or browse'}
           </p>
-          <div className="mt-7 inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-slate-950">
+
+          <p className="mt-2 text-sm leading-6 text-slate-500">
+            HEIC uploads are converted to JPG before analysis.
+          </p>
+
+          <div className="mt-5 inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-medium text-slate-200">
             <ImagePlus className="size-4" />
             Browse image
           </div>
@@ -107,49 +129,40 @@ export function UploadZone({
       </div>
 
       {file && (
-        <div className="mt-4 rounded-3xl border border-white/10 bg-slate-950/70 p-4">
+        <div className="mt-4 rounded-lg border border-slate-800 bg-slate-900/70 p-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <p className="truncate font-semibold text-white">{file.name}</p>
-              <p className="text-sm text-slate-400">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+              <p className="truncate text-sm font-semibold text-white">{file.name}</p>
+              <p className="text-xs text-slate-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
             </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={onAnalyze}
-                disabled={isLoading}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-amber-300 px-5 py-2.5 text-sm font-black text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isLoading && <Loader2 className="size-4 animate-spin" />}
-                Analyze
-              </button>
-              <button
-                type="button"
-                onClick={onClear}
-                className="inline-flex size-10 items-center justify-center rounded-full border border-white/10 text-slate-300 transition hover:bg-white/10 hover:text-white"
-                aria-label="Clear selected image"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
+
+            <button
+              type="button"
+              onClick={onAnalyze}
+              disabled={isLoading}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-cyan-300 px-4 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isLoading && <Loader2 className="size-4 animate-spin" />}
+              Analyze
+            </button>
           </div>
 
           {status !== 'idle' && (
             <div className="mt-4">
-              <div className="mb-2 flex justify-between text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <div className="mb-2 flex justify-between text-xs font-medium text-slate-500">
                 <span>{progressLabel}</span>
-                <span>{status}</span>
+                <span className="capitalize">{status}</span>
               </div>
-              <div className="h-3 overflow-hidden rounded-full bg-white/10">
+              <div className="h-2 overflow-hidden rounded-full bg-slate-800">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-amber-200 via-orange-400 to-red-400 transition-all duration-300"
+                  className="h-full rounded-full bg-cyan-300 transition-all duration-300"
 
                   style={{
                     width: `${progressValue}%`,
                   }}
                 />
               </div>
-              <div className="mt-3 flex items-center gap-2 text-sm text-slate-300">
+              <div className="mt-3 flex items-center gap-2 text-sm text-slate-400">
                 {(status === 'uploading' ||
                   status === 'queued' ||
                   status === 'processing') && (
