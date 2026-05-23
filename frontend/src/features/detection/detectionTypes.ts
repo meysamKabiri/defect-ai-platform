@@ -40,6 +40,10 @@ export type DetectionBox = {
 export type DetectionResult = {
   status: DetectionStatus;
 
+  jobId?: string;
+
+  rqJobId?: string;
+
   imageUrl?: string;
 
   annotatedImageUrl?: string;
@@ -47,6 +51,8 @@ export type DetectionResult = {
   defects: DetectionBox[];
 
   inferenceMs?: number;
+
+  processingTimeSeconds?: number;
 
   modelVersion?: string;
 
@@ -70,13 +76,22 @@ export type DetectionJobResponse = {
 
   status: DetectionStatus;
 
-  detections?: DetectionBox[];
+  rq_job_id?: string;
 
   image_url?: string;
 
   annotated_image_url?: string;
 
+  detections?: DetectionBox[];
+
+  result?: {
+    detections?: DetectionBox[];
+    annotated_image_url?: string;
+  };
+
   inference_ms?: number;
+
+  processing_time_seconds?: number;
 
   model_version?: string;
 

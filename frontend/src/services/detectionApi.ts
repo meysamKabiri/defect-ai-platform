@@ -3,21 +3,18 @@ import type {
   UploadDetectionResponse,
   DetectionJobResponse,
 } from "@/features/detection/detectionTypes";
-
-const API_BASE =
-  (import.meta.env.VITE_API_BASE_URL as string) ??
-  "http://127.0.0.1:8000/api/v1";
+import { API_V1_BASE_URL } from "@/lib/config";
 
 export const detectionApi = createApi({
   reducerPath: "detectionApi",
   baseQuery: fetchBaseQuery({
-    baseUrl: API_BASE,
+    baseUrl: API_V1_BASE_URL,
     // Attach auth header when present and include credentials for same-site cookies.
     prepareHeaders: (headers) => {
       try {
         const token = localStorage.getItem("auth_token");
         if (token) headers.set("Authorization", `Bearer ${token}`);
-      } catch (e) {
+      } catch {
         // ignore (SSR or restricted storage)
       }
       return headers;
