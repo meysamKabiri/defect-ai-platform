@@ -30,7 +30,9 @@ def update_job(
         "job_id": job_id,
     }
     current_job.update(payload)
-
+    print("------------current_job----------")
+    print(current_job)
+    print("------------current_job----------")
     redis_client.set(
         f"job:{job_id}",
         json.dumps(current_job),

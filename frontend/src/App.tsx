@@ -157,17 +157,13 @@ function App() {
           jobData.image_url,
 
         annotatedImageUrl:
-          jobData.annotated_image_url,
+          jobData.result
+            ?.annotated_image_url,
 
         defects:
-          jobData.detections ??
+          jobData.result
+            ?.detections ??
           [],
-
-        inferenceMs:
-          jobData.inference_ms,
-
-        modelVersion:
-          jobData.model_version,
       })
 
       setJobErrorMessage(
@@ -220,7 +216,7 @@ function App() {
       ? 'uploading'
       : jobId
         ? jobData?.status ??
-          'queued'
+        'queued'
         : completedResult
           ? 'completed'
           : jobErrorMessage
@@ -233,8 +229,10 @@ function App() {
   const displayImageUrl =
     getImageUrl(
       result?.annotatedImageUrl ??
+      result?.imageUrl ??
       previewUrl,
     )
+  console.log(result, displayImageUrl, 'displayImageUrl');
 
   const errorMessage =
     jobErrorMessage ??
