@@ -36,5 +36,7 @@ class Settings(BaseSettings):
     MYSQL_USER: str | None = None
     MYSQL_PASSWORD: str | None = None
 
+    DETECTION_CONFIDENCE_THRESHOLD: float = 0.4
+
 
 settings = Settings()

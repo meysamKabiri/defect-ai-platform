@@ -3,6 +3,7 @@ import uuid
 
 import cv2
 from ultralytics import YOLO
+from app.core.config import settings
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 MODEL_PATH = BASE_DIR / "app" / "models" / "best.pt"
@@ -23,7 +24,11 @@ model = YOLO(str(MODEL_PATH))
 
 
 def run_detection(image_path: str, output_filename: str | None = None) -> dict:
-    results = model(image_path)
+    # results = model(image_path)
+    results = model(
+        image_path,
+        conf=settings.DETECTION_CONFIDENCE_THRESHOLD,
+    )
     result = results[0]
 
     detections = []
