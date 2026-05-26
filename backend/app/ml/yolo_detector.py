@@ -7,7 +7,7 @@ from app.core.config import settings
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 MODEL_PATH = BASE_DIR / "app" / "models" / "best.pt"
-OUTPUT_DIR = BASE_DIR / "outputs"
+OUTPUT_DIR = settings.output_path
 
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 

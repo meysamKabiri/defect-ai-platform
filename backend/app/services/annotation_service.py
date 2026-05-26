@@ -1,7 +1,7 @@
-import os
 import uuid
 
 import cv2
+from app.core.config import settings
 
 
 class AnnotationService:
@@ -49,25 +49,19 @@ class AnnotationService:
                 2,
             )
 
-        os.makedirs(
-            "outputs",
-            exist_ok=True,
-        )
+        settings.output_path.mkdir(parents=True, exist_ok=True)
 
         output_filename = f"{uuid.uuid4()}.jpg"
 
-        output_path = os.path.join(
-            "outputs",
-            output_filename,
-        )
+        output_path = settings.output_path / output_filename
 
         cv2.imwrite(
-            output_path,
+            str(output_path),
             image,
         )
 
         return {
             "output_filename": output_filename,
-            "output_path": output_path,
+            "output_path": str(output_path),
             "output_url": (f"/outputs/{output_filename}"),
         }

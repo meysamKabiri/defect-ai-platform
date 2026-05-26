@@ -1,7 +1,9 @@
 from app.core.job_store import update_job
-from app.ml.yolo_detector import run_detection
+import logging
 import time
 import traceback
+
+logger = logging.getLogger(__name__)
 
 
 class DetectionPipelineService:
@@ -12,6 +14,7 @@ class DetectionPipelineService:
         image_path: str,
         file_url: str,
     ):
+        from app.ml.yolo_detector import run_detection
 
         try:
 
@@ -27,14 +30,12 @@ class DetectionPipelineService:
                 image_path=image_path,
                 output_filename=f"{job_id}.jpg",
             )
-            print("------detection_result-------")
-            print(detection_result)
-            print("------detection_result-------")
             processing_time = round(
                 time.time() - start_time,
                 2,
             )
-            print(detection_result, processing_time)
+            detection_result["processing_time_seconds"] = processing_time
+
             update_job(
                 job_id,
                 {
@@ -49,7 +50,7 @@ class DetectionPipelineService:
 
         except Exception as e:
 
-            print(traceback.format_exc())
+            logger.error(traceback.format_exc())
 
             update_job(
                 job_id,

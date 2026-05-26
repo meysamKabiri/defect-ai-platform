@@ -1,7 +1,9 @@
 import os
 import uuid
+from pathlib import Path
 
 from fastapi import UploadFile
+from app.core.config import settings
 
 
 class ImageService:
@@ -25,24 +27,23 @@ class ImageService:
     async def save_image(
         self,
         file: UploadFile,
-        upload_dir: str = "uploads",
+        upload_dir: str | None = None,
     ):
 
         self.validate_extension(file.filename)
-
-        os.makedirs(
-            upload_dir,
-            exist_ok=True,
+        upload_path = (
+            settings.resolve_backend_path(upload_dir)
+            if upload_dir is not None
+            else settings.upload_path
         )
+
+        upload_path.mkdir(parents=True, exist_ok=True)
 
         extension = os.path.splitext(file.filename)[1]
 
         unique_filename = f"{uuid.uuid4()}{extension}"
 
-        file_path = os.path.join(
-            upload_dir,
-            unique_filename,
-        )
+        file_path = Path(upload_path) / unique_filename
 
         contents = await file.read()
 
@@ -51,6 +52,6 @@ class ImageService:
 
         return {
             "filename": unique_filename,
-            "file_path": file_path,
+            "file_path": str(file_path),
             "file_url": f"/uploads/{unique_filename}",
         }

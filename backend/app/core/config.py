@@ -1,10 +1,15 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings
 from pydantic_settings import SettingsConfigDict
 
 
+BACKEND_DIR = Path(__file__).resolve().parents[2]
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=BACKEND_DIR / ".env",
         extra="ignore",
     )
 
@@ -37,6 +42,20 @@ class Settings(BaseSettings):
     MYSQL_PASSWORD: str | None = None
 
     DETECTION_CONFIDENCE_THRESHOLD: float = 0.4
+
+    def resolve_backend_path(self, path: str) -> Path:
+        configured_path = Path(path)
+        if configured_path.is_absolute():
+            return configured_path
+        return BACKEND_DIR / configured_path
+
+    @property
+    def upload_path(self) -> Path:
+        return self.resolve_backend_path(self.UPLOAD_DIR)
+
+    @property
+    def output_path(self) -> Path:
+        return self.resolve_backend_path(self.OUTPUT_DIR)
 
 
 settings = Settings()

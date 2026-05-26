@@ -2,6 +2,10 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import api_router
+from app.core.config import settings
+
+settings.upload_path.mkdir(parents=True, exist_ok=True)
+settings.output_path.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="Defect AI Platform")
 
@@ -18,12 +22,12 @@ app.add_middleware(
 )
 app.mount(
     "/uploads",
-    StaticFiles(directory="uploads"),
+    StaticFiles(directory=settings.upload_path),
     name="uploads",
 )
 app.mount(
     "/outputs",
-    StaticFiles(directory="outputs"),
+    StaticFiles(directory=settings.output_path),
     name="outputs",
 )
 
