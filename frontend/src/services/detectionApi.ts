@@ -1,50 +1,30 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { baseApi } from '@/services/baseApi'
 import type {
-  UploadDetectionResponse,
   DetectionJobResponse,
-} from "@/features/detection/detectionTypes";
-import { API_V1_BASE_URL } from "@/lib/config";
+  UploadDetectionResponse,
+} from '@/features/detection/detectionTypes'
 
-export const detectionApi = createApi({
-  reducerPath: "detectionApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl: API_V1_BASE_URL,
-    // Attach auth header when present and include credentials for same-site cookies.
-    prepareHeaders: (headers) => {
-      try {
-        const token = localStorage.getItem("auth_token");
-        if (token) headers.set("Authorization", `Bearer ${token}`);
-      } catch {
-        // ignore (SSR or restricted storage)
-      }
-      return headers;
-    },
-    credentials: "include",
-  }),
+export const detectionApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    uploadDetection: builder.mutation<
-      UploadDetectionResponse, // Response type
-      { file: File }
-    >({
+    uploadDetection: builder.mutation<UploadDetectionResponse, { file: File }>({
       query: ({ file }) => {
-        const formData = new FormData();
-        formData.append("file", file);
+        const formData = new FormData()
+        formData.append('file', file)
 
         return {
-          url: "/detect/upload",
-          method: "POST",
+          url: '/detect/upload',
+          method: 'POST',
           body: formData,
-          // Important: Do NOT set Content-Type header manually
-          // Fetch will automatically set multipart/form-data with boundary
-        };
+        }
       },
+      invalidatesTags: ['Detection'],
     }),
+
     getDetectionJob: builder.query<DetectionJobResponse, string>({
       query: (jobId) => `/detect/jobs/${jobId}`,
+      providesTags: (_result, _error, jobId) => [{ type: 'Detection', id: jobId }],
     }),
   }),
-});
+})
 
-// Export hooks
-export const { useUploadDetectionMutation, useGetDetectionJobQuery } =
-  detectionApi;
+export const { useUploadDetectionMutation, useGetDetectionJobQuery } = detectionApi
