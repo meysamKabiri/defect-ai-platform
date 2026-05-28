@@ -1,10 +1,8 @@
-import { useEffect, useState } from 'react'
 import { Boxes, ImageIcon, ScanLine } from 'lucide-react'
-import { useAppSelector } from '@/app/hooks'
 import { Panel } from '@/components/common/Panel'
 import { StatusBadge } from '@/components/common/StatusBadge'
-import { selectAccessToken } from '@/features/auth/authSlice'
 import type { DetectionBox } from '@/features/detection/detectionTypes'
+import { useAuthenticatedImageUrl } from '@/features/detection/hooks/useAuthenticatedImageUrl'
 
 function toPercent(value: number) {
   const asPercent = value <= 1 ? value * 100 : value
@@ -39,68 +37,16 @@ type ImageViewerProps = {
   alt?: string
 }
 
-function isProtectedDetectionImage(url: string) {
-  return url.includes('/api/v1/detect/jobs/') && url.includes('/image/')
-}
-
 export function ImageViewer({
   alt = 'Uploaded inspection image',
   boxes = [],
   imageUrl,
 }: ImageViewerProps) {
-  const accessToken = useAppSelector(selectAccessToken)
-  const [displayUrl, setDisplayUrl] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!imageUrl) {
-      setDisplayUrl(null)
-      return undefined
-    }
-
-    if (imageUrl.startsWith('blob:') || !isProtectedDetectionImage(imageUrl)) {
-      setDisplayUrl(imageUrl)
-      return undefined
-    }
-
-    let objectUrl: string | null = null
-    let cancelled = false
-    const protectedImageUrl = imageUrl
-
-    async function loadProtectedImage() {
-      const response = await fetch(protectedImageUrl, {
-        credentials: 'include',
-        headers: accessToken
-          ? {
-            Authorization: `Bearer ${accessToken}`,
-          }
-          : undefined,
-      })
-
-      if (!response.ok) {
-        throw new Error('Unable to load protected detection image.')
-      }
-
-      const blob = await response.blob()
-      objectUrl = URL.createObjectURL(blob)
-
-      if (!cancelled) {
-        setDisplayUrl(objectUrl)
-      }
-    }
-
-    void loadProtectedImage().catch(() => {
-      if (!cancelled) {
-        setDisplayUrl(null)
-      }
-    })
-
-    return () => {
-      cancelled = true
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl)
-      }
-    }
-  }, [accessToken, imageUrl])
+  const {
+    error: imageError,
+    imageUrl: displayUrl,
+    isLoading: isImageLoading,
+  } = useAuthenticatedImageUrl(imageUrl)
 
   return (
     <Panel
@@ -155,10 +101,10 @@ export function ImageViewer({
                   <ImageIcon className="size-6" aria-hidden="true" />
                 </div>
                 <h3 className="mt-4 text-base font-semibold text-foreground">
-                  No inspection image selected
+                  {isImageLoading ? 'Loading inspection image' : 'No inspection image selected'}
                 </h3>
                 <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
-                  Upload a production image to preview it here before AI inference begins.
+                  {imageError ?? 'Upload a production image to preview it here before AI inference begins.'}
                 </p>
               </div>
             </div>
@@ -169,7 +115,7 @@ export function ImageViewer({
           <div className="rounded-xl border border-border bg-background p-3">
             <ScanLine className="size-4 text-primary" aria-hidden="true" />
             <p className="mt-2 text-sm font-semibold text-foreground">
-              {imageUrl ? 'Preview ready' : 'Awaiting image'}
+              {isImageLoading ? 'Loading image' : imageUrl ? 'Preview ready' : 'Awaiting image'}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">Canvas state</p>
           </div>
