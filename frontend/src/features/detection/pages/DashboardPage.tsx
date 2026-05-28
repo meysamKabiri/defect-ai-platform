@@ -1,85 +1,64 @@
 import {
+  lazy,
+  Suspense,
   useEffect,
   useRef,
   useState,
-  lazy,
-  Suspense,
 } from 'react'
-
-
 import {
   Activity,
-  CheckCircle2,
+  Boxes,
   Clock3,
+  Cpu,
   Database,
+  LogOut,
+  ShieldCheck,
+  Sparkles,
 } from 'lucide-react'
-
 import heic2any from 'heic2any'
-
-import { getImageUrl }
-  from '@/lib/image'
-
+import { useAppDispatch, useAppSelector } from '@/app/hooks'
 import { DetectionCard } from '@/components/DetectionCard'
 import { Button } from '@/components/common/Button'
+import { Panel } from '@/components/common/Panel'
+import { StatusBadge } from '@/components/common/StatusBadge'
 import { ThemeToggle } from '@/components/common/ThemeToggle'
 import { useLogoutMutation } from '@/features/auth/api/authApi'
 import { selectCurrentUser } from '@/features/auth/authSlice'
-
-const ImageViewer = lazy(() =>
-  import('@/components/ImageViewer').then(
-    (m) => ({
-      default: m.ImageViewer,
-    }),
-  ),
-)
-
-const StatsCard = lazy(() =>
-  import('@/components/StatsCard').then(
-    (m) => ({
-      default: m.StatsCard,
-    }),
-  ),
-)
-
-import { UploadZone } from '@/components/UploadZone'
-
-import {
-  useAppDispatch,
-  useAppSelector,
-} from '@/app/hooks'
-
-import { resetUploadProgress } from '@/features/detection/uploadProgressSlice'
-
 import type {
   DetectionJobResponse,
   DetectionResult,
   DetectionStatus,
 } from '@/features/detection/detectionTypes'
-
+import { resetUploadProgress } from '@/features/detection/uploadProgressSlice'
+import { getImageUrl } from '@/lib/image'
 import {
-  useUploadDetectionMutation,
   useGetDetectionJobQuery,
+  useUploadDetectionMutation,
 } from '@/services/detectionApi'
+import { UploadZone } from '@/components/UploadZone'
 
-function getErrorMessage(
-  error: unknown,
-) {
-  if (
-    !error ||
-    typeof error !== 'object'
-  ) {
-    return undefined
-  }
+const ImageViewer = lazy(() =>
+  import('@/components/ImageViewer').then((module) => ({
+    default: module.ImageViewer,
+  })),
+)
 
-  const maybeError =
-    error as {
-      data?: {
-        message?: string
-        detail?: string
-      }
+const StatsCard = lazy(() =>
+  import('@/components/StatsCard').then((module) => ({
+    default: module.StatsCard,
+  })),
+)
 
-      error?: string
+function getErrorMessage(error: unknown) {
+  if (!error || typeof error !== 'object') return undefined
+
+  const maybeError = error as {
+    data?: {
+      detail?: string
+      message?: string
     }
+    error?: string
+  }
 
   return (
     maybeError.data?.message ??
@@ -89,124 +68,174 @@ function getErrorMessage(
   )
 }
 
+function isHeicFile(file: File) {
+  const name = file.name.toLowerCase()
+
+  return (
+    file.type === 'image/heic' ||
+    file.type === 'image/heif' ||
+    name.endsWith('.heic') ||
+    name.endsWith('.heif')
+  )
+}
+
+function DashboardSkeleton({ label }: { label: string }) {
+  return (
+    <Panel>
+      <div className="grid gap-4 p-5" aria-label={label}>
+        <div className="h-5 w-36 animate-pulse rounded-full bg-muted" />
+        <div className="aspect-[4/3] animate-pulse rounded-2xl bg-muted" />
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="h-20 animate-pulse rounded-2xl bg-muted" />
+          <div className="h-20 animate-pulse rounded-2xl bg-muted" />
+          <div className="h-20 animate-pulse rounded-2xl bg-muted" />
+        </div>
+      </div>
+    </Panel>
+  )
+}
+
+function formatRuntime(value?: number) {
+  return value !== undefined ? `${value}s` : '--'
+}
+
+function DashboardMetric({
+  description,
+  icon: Icon,
+  label,
+  value,
+}: {
+  description: string
+  icon: typeof Activity
+  label: string
+  value: string | number
+}) {
+  return (
+    <article className="rounded-2xl border border-border bg-surface p-4 shadow-card transition hover:border-primary/30 hover:bg-primary/5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p>
+          <p className="mt-2 truncate text-2xl font-semibold tracking-tight text-foreground">
+            {value}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
+        </div>
+        <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+          <Icon className="size-5" aria-hidden="true" />
+        </div>
+      </div>
+    </article>
+  )
+}
+
+function DashboardHeader({
+  isLoggingOut,
+  onLogout,
+  userEmail,
+}: {
+  isLoggingOut: boolean
+  onLogout: () => void
+  userEmail?: string
+}) {
+  return (
+    <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
+      <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="grid size-11 shrink-0 place-items-center rounded-2xl border border-border bg-surface text-primary shadow-card">
+            <ShieldCheck className="size-5" aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase text-muted-foreground">
+              Defect AI Platform
+            </p>
+            <h1 className="truncate text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+              Inspection command center
+            </h1>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge tone="success">Secure session</StatusBadge>
+          <span className="max-w-56 truncate rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-muted-foreground">
+            {userEmail ?? 'Authenticated operator'}
+          </span>
+          <ThemeToggle />
+          <Button
+            isLoading={isLoggingOut}
+            leftIcon={<LogOut className="size-4" aria-hidden="true" />}
+            onClick={onLogout}
+            size="sm"
+            type="button"
+            variant="secondary"
+          >
+            Logout
+          </Button>
+        </div>
+      </div>
+    </header>
+  )
+}
+
 export function DashboardPage() {
   const dispatch = useAppDispatch()
   const user = useAppSelector(selectCurrentUser)
   const [logout, { isLoading: isLoggingOut }] = useLogoutMutation()
+  const { progress } = useAppSelector((state) => state.uploadProgress)
 
-  const { progress } =
-    useAppSelector(
-      (state) =>
-        state.uploadProgress,
-    )
-
-  const [file, setFile] =
-    useState<File | null>(null)
-
-  const [
-    previewUrl,
-    setPreviewUrl,
-  ] = useState<string | null>(
-    null,
-  )
-
-  const previewUrlRef =
-    useRef<string | null>(null)
-
-  const [jobId, setJobId] =
-    useState<string | null>(null)
-
-  const [
-    jobErrorMessage,
-    setJobErrorMessage,
-  ] = useState<string>()
+  const [file, setFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const previewUrlRef = useRef<string | null>(null)
+  const [jobId, setJobId] = useState<string | null>(null)
+  const [jobErrorMessage, setJobErrorMessage] = useState<string>()
 
   const [
     uploadDetection,
     {
-      isLoading:
-      isUploading,
       error,
+      isLoading: isUploading,
       reset: resetUploadDetection,
     },
-  ] =
-    useUploadDetectionMutation()
+  ] = useUploadDetectionMutation()
 
-  const {
-    currentData: jobData,
-  } = useGetDetectionJobQuery(
-    jobId!,
-    {
-      skip: !jobId,
-
-      pollingInterval: 1000,
-
-      skipPollingIfUnfocused: true,
-    },
-  )
-
+  const { currentData: jobData } = useGetDetectionJobQuery(jobId!, {
+    pollingInterval: 1000,
+    skip: !jobId,
+    skipPollingIfUnfocused: true,
+  })
 
   useEffect(() => {
     return () => {
-      if (
-        previewUrlRef.current
-      ) {
-        URL.revokeObjectURL(
-          previewUrlRef.current,
-        )
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current)
       }
     }
   }, [])
 
   const isAnalyzing =
-    !!jobId &&
-    (jobData?.status ===
-      'queued' ||
-      jobData?.status ===
-      'processing')
+    Boolean(jobId) &&
+    (jobData?.status === 'queued' || jobData?.status === 'processing')
 
   const uploadStatus: DetectionStatus =
     isUploading
       ? 'uploading'
       : jobId
-        ? jobData?.status ??
-        'queued'
+        ? jobData?.status ?? 'queued'
         : jobErrorMessage
           ? 'failed'
           : 'idle'
 
   const result =
-    jobData?.status ===
-      'completed'
+    jobData?.status === 'completed'
       ? {
-        status: jobData.status,
-
+        annotatedImageUrl: jobData.result?.annotated_image_url ?? jobData.annotated_image_url,
+        defects: jobData.result?.detections ?? jobData.detections ?? [],
+        imageUrl: jobData.image_url,
+        inferenceMs: jobData.inference_ms,
         jobId: jobData.job_id,
-
+        modelVersion: jobData.model_version,
+        processingTimeSeconds: jobData.processing_time_seconds,
         rqJobId: jobData.rq_job_id,
-
-        imageUrl:
-          jobData.image_url,
-
-        annotatedImageUrl:
-          jobData.result
-            ?.annotated_image_url ??
-          jobData.annotated_image_url,
-
-        defects:
-          jobData.result
-            ?.detections ??
-          jobData.detections ??
-          [],
-
-        inferenceMs:
-          jobData.inference_ms,
-
-        processingTimeSeconds:
-          jobData.processing_time_seconds,
-
-        modelVersion:
-          jobData.model_version,
+        status: jobData.status,
       } satisfies DetectionResult
       : undefined
 
@@ -219,312 +248,199 @@ export function DashboardPage() {
       } satisfies DetectionJobResponse)
       : undefined)
 
-  const displayImageUrl =
-    getImageUrl(
-      result?.annotatedImageUrl ??
-      result?.imageUrl ??
-      previewUrl,
-    )
+  const displayImageUrl = getImageUrl(
+    result?.annotatedImageUrl ??
+    result?.imageUrl ??
+    previewUrl,
+  )
 
   const errorMessage =
     jobErrorMessage ??
     (jobData?.status === 'failed'
-      ? jobData.error ??
-      'Unable to analyze this image.'
+      ? jobData.error ?? 'Unable to analyze this image.'
       : undefined) ??
     getErrorMessage(error)
 
-  const replacePreviewUrl = (
-    nextUrl:
-      | string
-      | null,
-  ) => {
-    if (
-      previewUrlRef.current
-    ) {
-      URL.revokeObjectURL(
-        previewUrlRef.current,
-      )
+  const defectCount = result?.defects.length ?? currentJob?.detections?.length ?? currentJob?.result?.detections?.length ?? 0
+
+  const replacePreviewUrl = (nextUrl: string | null) => {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current)
     }
 
-    previewUrlRef.current =
-      nextUrl
-
+    previewUrlRef.current = nextUrl
     setPreviewUrl(nextUrl)
   }
 
-  const handleFileSelect =
-    async (
-      nextFile: File,
-    ) => {
-      setJobId(null)
-      setJobErrorMessage(
-        undefined,
-      )
-      resetUploadDetection()
-      dispatch(
-        resetUploadProgress(),
-      )
-      replacePreviewUrl(null)
+  const handleFileSelect = async (nextFile: File) => {
+    setJobId(null)
+    setJobErrorMessage(undefined)
+    resetUploadDetection()
+    dispatch(resetUploadProgress())
+    replacePreviewUrl(null)
 
-      const isHeic =
-        nextFile.type ===
-        'image/heic' ||
-        nextFile.type ===
-        'image/heif' ||
-        nextFile.name
-          .toLowerCase()
-          .endsWith(
-            '.heic',
-          ) ||
-        nextFile.name
-          .toLowerCase()
-          .endsWith(
-            '.heif',
-          )
-
-      try {
-        if (isHeic) {
-          const convertedBlob =
-            await heic2any({
-              blob: nextFile,
-
-              toType:
-                'image/jpeg',
-
-              quality: 0.9,
-            })
-
-          const jpegBlob =
-            Array.isArray(
-              convertedBlob,
-            )
-              ? convertedBlob[0]
-              : convertedBlob
-
-          const convertedFile =
-            new File(
-              [jpegBlob],
-              nextFile.name.replace(
-                /\.(heic|heif)$/i,
-                '.jpg',
-              ),
-              {
-                type: 'image/jpeg',
-              },
-            )
-
-          setFile(
-            convertedFile,
-          )
-
-          replacePreviewUrl(
-            URL.createObjectURL(
-              jpegBlob,
-            ),
-          )
-        } else {
-          setFile(nextFile)
-
-          replacePreviewUrl(
-            URL.createObjectURL(
-              nextFile,
-            ),
-          )
-        }
-
-      } catch (error) {
-        console.error(
-          'HEIC conversion failed:',
-          error,
+    try {
+      if (isHeicFile(nextFile)) {
+        const convertedBlob = await heic2any({
+          blob: nextFile,
+          quality: 0.9,
+          toType: 'image/jpeg',
+        })
+        const jpegBlob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob
+        const convertedFile = new File(
+          [jpegBlob],
+          nextFile.name.replace(/\.(heic|heif)$/i, '.jpg'),
+          {
+            type: 'image/jpeg',
+          },
         )
+
+        setFile(convertedFile)
+        replacePreviewUrl(URL.createObjectURL(jpegBlob))
+      } else {
+        setFile(nextFile)
+        replacePreviewUrl(URL.createObjectURL(nextFile))
       }
+    } catch {
+      setFile(null)
+      setJobErrorMessage('Unable to convert this HEIC image. Please try a JPG or PNG file.')
     }
+  }
 
-  const handleAnalyze =
-    async () => {
-      if (!file) return
+  const handleAnalyze = async () => {
+    if (!file) return
 
-      try {
-        setJobErrorMessage(
-          undefined,
-        )
-
-        const response =
-          await uploadDetection(
-            {
-              file,
-            },
-          ).unwrap()
-
-        setJobId(
-          response.job_id,
-        )
-      } catch (error) {
-        console.error(error)
-      }
+    try {
+      setJobErrorMessage(undefined)
+      const response = await uploadDetection({ file }).unwrap()
+      setJobId(response.job_id)
+    } catch (requestError) {
+      setJobErrorMessage(getErrorMessage(requestError) ?? 'Unable to analyze this image.')
     }
+  }
 
   const handleClear = () => {
     setFile(null)
-
     setJobId(null)
-
-    setJobErrorMessage(
-      undefined,
-    )
-
+    setJobErrorMessage(undefined)
     resetUploadDetection()
-
     replacePreviewUrl(null)
-
-    dispatch(
-      resetUploadProgress(),
-    )
+    dispatch(resetUploadProgress())
   }
 
   return (
-    <main className="min-h-screen bg-[#05070a] text-slate-100">
-      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-5 px-4 py-4 sm:px-6 lg:px-8">
-        <header className="flex flex-col gap-4 border-b border-slate-800 pb-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="flex items-center gap-2 lg:hidden">
-            <ThemeToggle />
-            <Button variant="secondary" size="sm" isLoading={isLoggingOut} onClick={() => void logout().unwrap().catch(() => undefined)}>
-              Logout
-            </Button>
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase text-cyan-300/80">
-              Defect AI Platform
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">
-              Inspection workspace
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-              Upload a production image, track the queued inference job, and
-              review every field returned by the detection backend.
-            </p>
-          </div>
+    <main className="min-h-screen bg-background text-foreground">
+      <DashboardHeader
+        isLoggingOut={isLoggingOut}
+        onLogout={() => void logout().unwrap().catch(() => undefined)}
+        userEmail={user?.email}
+      />
 
-          <div className="flex flex-col gap-3">
-            <div className="hidden items-center justify-end gap-2 lg:flex">
-              <span className="max-w-[220px] truncate text-xs font-medium text-slate-500">
-                {user?.email ?? 'Authenticated session'}
-              </span>
-              <ThemeToggle />
-              <Button variant="secondary" size="sm" isLoading={isLoggingOut} onClick={() => void logout().unwrap().catch(() => undefined)}>
-                Logout
-              </Button>
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:min-w-[520px]">
-            <div className="rounded-lg border border-slate-800 bg-slate-950 p-3">
-              <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                <Activity className="size-3.5" />
-                Status
+      <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+        <section className="relative overflow-hidden rounded-2xl border border-border bg-surface p-5 shadow-card sm:p-6">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_20%,hsl(var(--primary)/0.16),transparent_30%),radial-gradient(circle_at_90%_10%,hsl(var(--success)/0.12),transparent_28%)]" aria-hidden="true" />
+          <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase text-primary">
+                <Sparkles className="size-3.5" aria-hidden="true" />
+                AI-powered industrial QA
               </div>
-              <p className="mt-2 truncate text-sm font-semibold capitalize text-white">
-                {uploadStatus}
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                Upload, analyze, and review production defects with real-time model feedback.
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
+                Queue images through the FastAPI and Redis worker pipeline, monitor YOLOv8 inference, and inspect persisted detection metadata in one operator-focused workspace.
               </p>
             </div>
 
-            <div className="rounded-lg border border-slate-800 bg-slate-950 p-3">
-              <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                <Database className="size-3.5" />
-                Job
-              </div>
-              <p className="mt-2 truncate text-sm font-semibold text-white">
-                {currentJob?.job_id ?? 'No job'}
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-slate-800 bg-slate-950 p-3">
-              <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                <CheckCircle2 className="size-3.5" />
-                Defects
-              </div>
-              <p className="mt-2 text-sm font-semibold text-white">
-                {result?.defects.length ?? 0}
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-slate-800 bg-slate-950 p-3">
-              <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                <Clock3 className="size-3.5" />
-                Runtime
-              </div>
-              <p className="mt-2 text-sm font-semibold text-white">
-                {result?.processingTimeSeconds
-                  ? `${result.processingTimeSeconds}s`
-                  : '--'}
-              </p>
-            </div>
+            <div className="grid min-w-full grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[34rem]">
+              <DashboardMetric
+                description="Pipeline state"
+                icon={Activity}
+                label="Status"
+                value={uploadStatus}
+              />
+              <DashboardMetric
+                description="Worker reference"
+                icon={Database}
+                label="Job"
+                value={currentJob?.job_id ? currentJob.job_id.slice(0, 8) : 'No job'}
+              />
+              <DashboardMetric
+                description="Model findings"
+                icon={Boxes}
+                label="Defects"
+                value={defectCount}
+              />
+              <DashboardMetric
+                description="Inference time"
+                icon={Clock3}
+                label="Runtime"
+                value={formatRuntime(result?.processingTimeSeconds)}
+              />
             </div>
           </div>
-        </header>
+        </section>
 
-        <section className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
-          <aside className="space-y-5">
+        <section className="grid gap-6 xl:grid-cols-[24rem_minmax(0,1fr)]">
+          <aside className="grid gap-6 xl:sticky xl:top-24 xl:self-start">
             <UploadZone
               file={file}
+              isLoading={isUploading || isAnalyzing}
+              onAnalyze={handleAnalyze}
+              onClear={handleClear}
+              onFileSelect={handleFileSelect}
               progress={progress}
               status={uploadStatus}
-              isLoading={
-                isUploading ||
-                isAnalyzing
-              }
-              onFileSelect={
-                handleFileSelect
-              }
-              onAnalyze={
-                handleAnalyze
-              }
-              onClear={handleClear}
             />
 
-            <Suspense
-              fallback={
-                <div className="rounded-lg border border-slate-800 bg-slate-950 p-4 text-sm text-slate-500">
-                  Loading stats...
-                </div>
-              }
-            >
-              <StatsCard
-                result={result}
-                job={currentJob}
-              />
+            <Suspense fallback={<DashboardSkeleton label="Loading inspection summary" />}>
+              <StatsCard job={currentJob} result={result} />
             </Suspense>
           </aside>
 
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
-            <Suspense
-              fallback={
-                <div className="rounded-lg border border-slate-800 bg-slate-950 p-4 text-sm text-slate-500">
-                  Loading viewer...
+          <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_28rem]">
+            <div className="grid gap-6">
+              <Suspense fallback={<DashboardSkeleton label="Loading inspection canvas" />}>
+                <ImageViewer
+                  alt={file?.name ?? 'Inspection preview'}
+                  boxes={result?.defects}
+                  imageUrl={displayImageUrl}
+                />
+              </Suspense>
+
+              <Panel
+                description="Queue-backed inference separates uploads from GPU-heavy model execution."
+                eyebrow="Architecture"
+                title="Processing pipeline"
+              >
+                <div className="grid gap-3 p-5 sm:grid-cols-3">
+                  {[
+                    ['FastAPI upload', 'Validates image and creates a persisted job.'],
+                    ['Redis/RQ worker', 'Executes asynchronous inference without blocking the UI.'],
+                    ['YOLOv8 output', 'Returns annotated images, boxes, confidence, and metadata.'],
+                  ].map(([title, description], index) => (
+                    <article className="rounded-2xl border border-border bg-background p-4" key={title}>
+                      <div className="mb-4 grid size-9 place-items-center rounded-xl bg-primary/10 text-primary">
+                        <Cpu className="size-4" aria-hidden="true" />
+                      </div>
+                      <p className="text-sm font-semibold text-foreground">
+                        {index + 1}. {title}
+                      </p>
+                      <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                        {description}
+                      </p>
+                    </article>
+                  ))}
                 </div>
-              }
-            >
-              <ImageViewer
-                imageUrl={
-                  displayImageUrl
-                }
-                boxes={
-                  result?.defects
-                }
-                alt={
-                  file?.name ??
-                  'Inspection preview'
-                }
-              />
-            </Suspense>
+              </Panel>
+            </div>
 
             <DetectionCard
-              result={result}
-              job={currentJob}
               error={errorMessage}
-              isLoading={
-                isUploading ||
-                isAnalyzing
-              }
+              isLoading={isUploading || isAnalyzing}
+              job={currentJob}
+              result={result}
             />
           </div>
         </section>
@@ -532,4 +448,3 @@ export function DashboardPage() {
     </main>
   )
 }
-

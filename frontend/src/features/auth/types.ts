@@ -1,6 +1,7 @@
 export type AuthUser = {
   id: string
   email: string
+  full_name?: string | null
   name?: string
   roles?: string[]
 }
@@ -13,6 +14,12 @@ export type AuthTokens = {
 export type LoginRequest = {
   email: string
   password: string
+}
+
+export type CreateUserRequest = {
+  email: string
+  password: string
+  full_name?: string | null
 }
 
 export type AuthResponse = {

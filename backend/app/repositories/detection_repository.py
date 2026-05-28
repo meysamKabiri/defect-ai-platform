@@ -44,9 +44,13 @@ class DetectionRepository:
         self,
         job_id: str,
         *,
+        user_id: str | None = None,
         include_detections: bool = False,
     ) -> DetectionJob | None:
         statement = select(DetectionJob).where(DetectionJob.id == job_id)
+
+        if user_id is not None:
+            statement = statement.where(DetectionJob.user_id == user_id)
 
         if include_detections:
             statement = statement.options(selectinload(DetectionJob.detections))
@@ -59,12 +63,14 @@ class DetectionRepository:
         *,
         status: str | None = None,
         class_name: str | None = None,
+        user_id: str | None = None,
         limit: int = 20,
         offset: int = 0,
     ) -> tuple[list[DetectionJob], int]:
         statement = self._job_filter_statement(
             status=status,
             class_name=class_name,
+            user_id=user_id,
         )
         count_statement = select(func.count()).select_from(statement.subquery())
 
@@ -157,6 +163,7 @@ class DetectionRepository:
         *,
         status: str | None,
         class_name: str | None,
+        user_id: str | None,
     ) -> Select[tuple[DetectionJob]]:
         statement = select(DetectionJob)
 
@@ -165,6 +172,9 @@ class DetectionRepository:
 
         if status is not None:
             statement = statement.where(DetectionJob.status == status)
+
+        if user_id is not None:
+            statement = statement.where(DetectionJob.user_id == user_id)
 
         if class_name is not None:
             statement = statement.where(DetectionBox.class_name == class_name)

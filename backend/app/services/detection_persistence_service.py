@@ -16,6 +16,7 @@ class DetectionPersistenceService:
         job_id: str,
         original_filename: str | None,
         image_url: str | None,
+        user_id: str,
         rq_job_id: str | None = None,
     ) -> DetectionJob:
         return await self.repository.create_job(
@@ -23,6 +24,7 @@ class DetectionPersistenceService:
             status="queued",
             original_filename=original_filename,
             image_url=image_url,
+            user_id=user_id,
             rq_job_id=rq_job_id,
         )
 
@@ -70,9 +72,12 @@ class DetectionPersistenceService:
     async def get_job(
         self,
         job_id: str,
+        *,
+        user_id: str | None = None,
     ) -> DetectionJob | None:
         return await self.repository.get_job(
             job_id,
+            user_id=user_id,
             include_detections=True,
         )
 
@@ -81,12 +86,14 @@ class DetectionPersistenceService:
         *,
         status: str | None,
         class_name: str | None,
+        user_id: str | None,
         limit: int,
         offset: int,
     ) -> tuple[list[DetectionJob], int]:
         return await self.repository.list_jobs(
             status=status,
             class_name=class_name,
+            user_id=user_id,
             limit=limit,
             offset=offset,
         )

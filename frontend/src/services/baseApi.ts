@@ -39,14 +39,20 @@ const rawBaseQuery = fetchBaseQuery({
   },
 })
 
+function getRequestUrl(args: string | FetchArgs) {
+  return typeof args === 'string' ? args : args.url
+}
+
 const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (
   args,
   api,
   extraOptions,
 ) => {
   let result = await rawBaseQuery(args, api, extraOptions)
+  const requestUrl = getRequestUrl(args)
+  const canRefresh = !['/auth/login', '/auth/refresh'].includes(requestUrl)
 
-  if (result.error?.status === 401) {
+  if (result.error?.status === 401 && canRefresh) {
     const refreshResult = await rawBaseQuery(
       {
         url: '/auth/refresh',

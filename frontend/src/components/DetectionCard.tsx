@@ -2,13 +2,19 @@ import {
   AlertTriangle,
   CheckCircle2,
   ClipboardList,
-  Loader2,
+  Crosshair,
+  Gauge,
+  Info,
+  Timer,
 } from 'lucide-react'
+import { Panel } from '@/components/common/Panel'
+import { StatusBadge } from '@/components/common/StatusBadge'
 import type {
   DetectionBox,
   DetectionJobResponse,
   DetectionResult,
 } from '@/features/detection/detectionTypes'
+import { cn } from '@/lib/utils'
 
 type DetectionCardProps = {
   result?: DetectionResult
@@ -41,7 +47,13 @@ function getDetections(
   )
 }
 
-function DataRow({
+function getConfidenceTone(confidence: number) {
+  if (confidence >= 0.85) return 'danger'
+  if (confidence >= 0.65) return 'warning'
+  return 'primary'
+}
+
+function DataTile({
   label,
   value,
 }: {
@@ -49,20 +61,44 @@ function DataRow({
   value?: string | number
 }) {
   return (
-    <div className="min-w-0 border-b border-slate-800 py-2 last:border-0">
-      <dt className="text-xs font-medium text-slate-500">{label}</dt>
-      <dd className="mt-1 truncate text-sm font-medium text-white">
+    <div className="min-w-0 rounded-xl border border-border bg-background p-3">
+      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
+      <dd className="mt-1 truncate text-sm font-semibold text-foreground">
         {value ?? '--'}
       </dd>
     </div>
   )
 }
 
+function EmptyDetectionState({
+  isLoading,
+}: {
+  isLoading?: boolean
+}) {
+  return (
+    <div className="grid min-h-52 place-items-center rounded-2xl border border-border bg-background p-6 text-center">
+      <div>
+        <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary">
+          <ClipboardList className="size-5" aria-hidden="true" />
+        </div>
+        <h3 className="mt-4 text-sm font-semibold text-foreground">
+          {isLoading ? 'Waiting for inference output' : 'No detection rows yet'}
+        </h3>
+        <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
+          {isLoading
+            ? 'The worker is processing the queued job. Detection rows will appear here as soon as the backend returns results.'
+            : 'Run an analysis to populate model confidence, class labels, and bounding-box geometry.'}
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export function DetectionCard({
-  result,
-  job,
   error,
   isLoading,
+  job,
+  result,
 }: DetectionCardProps) {
   const defects = getDetections(result, job)
   const annotatedImageUrl =
@@ -72,139 +108,150 @@ export function DetectionCard({
   const processingTime =
     result?.processingTimeSeconds ??
     job?.processing_time_seconds
+  const status = job?.status ?? result?.status ?? 'idle'
 
   return (
-    <section className="rounded-lg border border-slate-800 bg-slate-950">
-      <div className="border-b border-slate-800 p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase text-slate-500">
-              Backend response
-            </p>
-            <h2 className="mt-1 text-lg font-semibold text-white">
-              Detection data
-            </h2>
-          </div>
-
-          <div className="inline-flex items-center gap-2 rounded-md border border-slate-800 bg-slate-900 px-2.5 py-1.5 text-xs font-medium capitalize text-slate-300">
-            {isLoading && <Loader2 className="size-3.5 animate-spin" />}
-            {job?.status ?? result?.status ?? 'idle'}
-          </div>
-        </div>
-
+    <Panel
+      action={<StatusBadge status={status}>{status}</StatusBadge>}
+      description="Scan model output, confidence scores, and persisted job metadata."
+      eyebrow="Output"
+      title="Detection results"
+    >
+      <div className="grid gap-5 p-5">
         {error && (
-          <div className="mt-4 flex gap-3 rounded-lg border border-red-900/70 bg-red-950/40 p-3 text-sm text-red-200">
-            <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          <div className="flex gap-3 rounded-2xl border border-danger/20 bg-danger/10 p-4 text-sm leading-6 text-danger">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
             <span>{error}</span>
           </div>
         )}
 
-        {!error && !result && !job && !isLoading && (
-          <div className="mt-4 flex gap-3 rounded-lg border border-slate-800 bg-slate-900/70 p-3 text-sm text-slate-400">
-            <ClipboardList className="mt-0.5 size-4 shrink-0" />
-            <span>Run an analysis to populate job and detection fields.</span>
-          </div>
-        )}
-      </div>
-
-      <div className="grid gap-4 p-4">
-        <dl className="grid gap-x-4 sm:grid-cols-2">
-          <DataRow label="Job ID" value={job?.job_id ?? result?.jobId} />
-          <DataRow label="RQ Job ID" value={job?.rq_job_id ?? result?.rqJobId} />
-          <DataRow label="Original image" value={job?.image_url ?? result?.imageUrl} />
-          <DataRow label="Annotated image" value={annotatedImageUrl} />
-          <DataRow
+        <dl className="grid gap-3 sm:grid-cols-2">
+          <DataTile label="Job ID" value={job?.job_id ?? result?.jobId} />
+          <DataTile label="RQ worker job" value={job?.rq_job_id ?? result?.rqJobId} />
+          <DataTile label="Source image" value={job?.image_url ?? result?.imageUrl} />
+          <DataTile label="Annotated image" value={annotatedImageUrl} />
+          <DataTile
             label="Processing time"
-            value={
-              processingTime !== undefined
-                ? `${processingTime}s`
-                : undefined
-            }
+            value={processingTime !== undefined ? `${processingTime}s` : undefined}
           />
-          <DataRow label="Model" value={result?.modelVersion ?? job?.model_version ?? 'YOLOv8'} />
+          <DataTile label="Model" value={result?.modelVersion ?? job?.model_version ?? 'YOLOv8'} />
         </dl>
 
-        <div className="rounded-lg border border-slate-800">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-800 px-3 py-2">
-            <div className="flex items-center gap-2">
-              {defects.length > 0 ? (
-                <AlertTriangle className="size-4 text-rose-400" />
-              ) : (
-                <CheckCircle2 className="size-4 text-emerald-400" />
-              )}
-              <h3 className="text-sm font-semibold text-white">
-                Detections
-              </h3>
+        <div className="rounded-2xl border border-border bg-background">
+          <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div
+                className={cn(
+                  'grid size-9 place-items-center rounded-xl',
+                  defects.length > 0 ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success',
+                )}
+              >
+                {defects.length > 0 ? (
+                  <AlertTriangle className="size-4" aria-hidden="true" />
+                ) : (
+                  <CheckCircle2 className="size-4" aria-hidden="true" />
+                )}
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Detection rows</h3>
+                <p className="text-xs text-muted-foreground">
+                  {defects.length} model-generated result{defects.length === 1 ? '' : 's'}
+                </p>
+              </div>
             </div>
-            <span className="text-xs font-medium text-slate-500">
-              {defects.length} total
-            </span>
+            <StatusBadge tone={defects.length > 0 ? 'warning' : 'success'}>
+              {defects.length > 0 ? 'Review' : 'Clear'}
+            </StatusBadge>
           </div>
 
           {defects.length === 0 ? (
-            <p className="p-3 text-sm text-slate-500">
-              No detection rows returned yet.
-            </p>
+            <div className="p-4">
+              <EmptyDetectionState isLoading={isLoading} />
+            </div>
           ) : (
-            <div className="max-h-[520px] overflow-auto">
-              {defects.map((defect, index) => (
-                <article
-                  key={`${defect.label ?? defect.class_name}-${defect.id ?? index}`}
-                  className="border-b border-slate-800 p-3 last:border-0"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-white">
-                        {defect.label ?? defect.class_name}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        Class {defect.class_id} {defect.id ? `- ${defect.id}` : ''}
-                      </p>
+            <div className="max-h-[34rem] overflow-auto">
+              {defects.map((defect, index) => {
+                const label = defect.label ?? defect.class_name
+                const confidenceTone = getConfidenceTone(defect.confidence)
+
+                return (
+                  <article
+                    className="border-b border-border p-4 transition hover:bg-muted/40 last:border-0"
+                    key={`${label}-${defect.id ?? index}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-foreground">
+                          {label}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Class {defect.class_id}{defect.id ? ` · ${defect.id}` : ''}
+                        </p>
+                      </div>
+
+                      <StatusBadge tone={confidenceTone}>
+                        {formatPercent(defect.confidence)}
+                      </StatusBadge>
                     </div>
 
-                    <span className="rounded-md bg-rose-500 px-2 py-1 text-xs font-semibold text-white">
-                      {formatPercent(defect.confidence)}
-                    </span>
-                  </div>
-
-                  <dl className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-                    <div className="rounded-md bg-slate-900 p-2">
-                      <dt className="text-slate-500">X</dt>
-                      <dd className="font-medium text-slate-200">
-                        {formatNumber(defect.x ?? defect.bbox?.x1)}
-                      </dd>
-                    </div>
-                    <div className="rounded-md bg-slate-900 p-2">
-                      <dt className="text-slate-500">Y</dt>
-                      <dd className="font-medium text-slate-200">
-                        {formatNumber(defect.y ?? defect.bbox?.y1)}
-                      </dd>
-                    </div>
-                    <div className="rounded-md bg-slate-900 p-2">
-                      <dt className="text-slate-500">W</dt>
-                      <dd className="font-medium text-slate-200">
-                        {formatNumber(
-                          defect.width ??
-                          (defect.bbox ? defect.bbox.x2 - defect.bbox.x1 : undefined),
-                        )}
-                      </dd>
-                    </div>
-                    <div className="rounded-md bg-slate-900 p-2">
-                      <dt className="text-slate-500">H</dt>
-                      <dd className="font-medium text-slate-200">
-                        {formatNumber(
-                          defect.height ??
-                          (defect.bbox ? defect.bbox.y2 - defect.bbox.y1 : undefined),
-                        )}
-                      </dd>
-                    </div>
-                  </dl>
-                </article>
-              ))}
+                    <dl className="mt-4 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                      <div className="rounded-xl border border-border bg-surface p-3">
+                        <dt className="flex items-center gap-1.5 text-muted-foreground">
+                          <Crosshair className="size-3.5" aria-hidden="true" />
+                          X
+                        </dt>
+                        <dd className="mt-1 font-semibold text-foreground">
+                          {formatNumber(defect.x ?? defect.bbox?.x1)}
+                        </dd>
+                      </div>
+                      <div className="rounded-xl border border-border bg-surface p-3">
+                        <dt className="flex items-center gap-1.5 text-muted-foreground">
+                          <Crosshair className="size-3.5" aria-hidden="true" />
+                          Y
+                        </dt>
+                        <dd className="mt-1 font-semibold text-foreground">
+                          {formatNumber(defect.y ?? defect.bbox?.y1)}
+                        </dd>
+                      </div>
+                      <div className="rounded-xl border border-border bg-surface p-3">
+                        <dt className="flex items-center gap-1.5 text-muted-foreground">
+                          <Gauge className="size-3.5" aria-hidden="true" />
+                          W
+                        </dt>
+                        <dd className="mt-1 font-semibold text-foreground">
+                          {formatNumber(
+                            defect.width ??
+                            (defect.bbox ? defect.bbox.x2 - defect.bbox.x1 : undefined),
+                          )}
+                        </dd>
+                      </div>
+                      <div className="rounded-xl border border-border bg-surface p-3">
+                        <dt className="flex items-center gap-1.5 text-muted-foreground">
+                          <Timer className="size-3.5" aria-hidden="true" />
+                          H
+                        </dt>
+                        <dd className="mt-1 font-semibold text-foreground">
+                          {formatNumber(
+                            defect.height ??
+                            (defect.bbox ? defect.bbox.y2 - defect.bbox.y1 : undefined),
+                          )}
+                        </dd>
+                      </div>
+                    </dl>
+                  </article>
+                )
+              })}
             </div>
           )}
         </div>
+
+        <div className="flex gap-3 rounded-2xl border border-border bg-background p-4 text-sm leading-6 text-muted-foreground">
+          <Info className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+          <p>
+            Confidence badges highlight high-probability detections first. Persisted job metadata is shown above for audit and debugging workflows.
+          </p>
+        </div>
       </div>
-    </section>
+    </Panel>
   )
 }

@@ -9,8 +9,10 @@ from fastapi import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db_session
+from app.core.dependencies import get_current_user
 from app.db.models.detection import DetectionBox
 from app.db.models.detection import DetectionJob
+from app.db.models.user import User
 from app.schemas.detection import DetectionBoxResponse
 from app.schemas.detection import DetectionJobListResponse
 from app.schemas.detection import PersistedDetectionJobResponse
@@ -29,6 +31,7 @@ upload_service = UploadService()
 async def upload_image(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(get_current_user),
 ):
 
     try:
@@ -36,6 +39,7 @@ async def upload_image(
         return await upload_service.upload_image(
             file=file,
             db=db,
+            user_id=current_user.id,
         )
 
     except ValueError as e:
@@ -50,9 +54,13 @@ async def upload_image(
 async def get_detection_job(
     job_id: str,
     db: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(get_current_user),
 ):
     persistence_service = DetectionPersistenceService(db)
-    job = await persistence_service.get_job(job_id)
+    job = await persistence_service.get_job(
+        job_id,
+        user_id=current_user.id,
+    )
 
     if job is None:
 
@@ -74,11 +82,13 @@ async def list_detection_jobs(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(get_current_user),
 ):
     persistence_service = DetectionPersistenceService(db)
     jobs, total = await persistence_service.list_jobs(
         status=status,
         class_name=class_name,
+        user_id=current_user.id,
         limit=limit,
         offset=offset,
     )

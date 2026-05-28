@@ -23,7 +23,10 @@ export default {
         },
         success: 'hsl(var(--success) / <alpha-value>)',
         warning: 'hsl(var(--warning) / <alpha-value>)',
-        danger: 'hsl(var(--danger) / <alpha-value>)',
+        danger: {
+          DEFAULT: 'hsl(var(--danger) / <alpha-value>)',
+          foreground: 'hsl(var(--danger-foreground) / <alpha-value>)',
+        },
       },
       borderRadius: {
         xl: 'var(--radius-xl)',

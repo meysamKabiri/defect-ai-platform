@@ -1,4 +1,4 @@
-import type { AuthTokens, AuthUser } from './types'
+import type { AuthUser } from './types'
 
 const ACCESS_TOKEN_KEY = 'defect_ai.access_token'
 const REFRESH_TOKEN_KEY = 'defect_ai.refresh_token'
@@ -15,8 +15,7 @@ export const tokenStorage = {
   },
 
   getRefreshToken() {
-    if (!canUseStorage()) return null
-    return window.localStorage.getItem(REFRESH_TOKEN_KEY)
+    return null
   },
 
   getUser(): AuthUser | null {
@@ -32,14 +31,11 @@ export const tokenStorage = {
     }
   },
 
-  setSession(tokens: AuthTokens, user?: AuthUser | null) {
+  setSession(_tokens: unknown, user?: AuthUser | null) {
     if (!canUseStorage()) return
 
-    window.localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken)
-
-    if (tokens.refreshToken) {
-      window.localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken)
-    }
+    window.localStorage.removeItem(ACCESS_TOKEN_KEY)
+    window.localStorage.removeItem(REFRESH_TOKEN_KEY)
 
     if (user) {
       window.localStorage.setItem(USER_KEY, JSON.stringify(user))

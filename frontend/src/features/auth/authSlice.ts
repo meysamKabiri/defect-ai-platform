@@ -19,7 +19,7 @@ const initialState: AuthState = {
   user: persistedUser,
   accessToken: persistedAccessToken,
   refreshToken: persistedRefreshToken,
-  status: persistedAccessToken ? 'authenticated' : 'anonymous',
+  status: 'checking',
   error: null,
 }
 
@@ -74,6 +74,7 @@ export const authReducer = authSlice.reducer
 export const selectAuth = (state: RootState) => state.auth
 export const selectCurrentUser = (state: RootState) => state.auth.user
 export const selectAccessToken = (state: RootState) => state.auth.accessToken
+export const selectRefreshToken = (state: RootState) => state.auth.refreshToken
 export const selectAuthStatus = (state: RootState) => state.auth.status
 export const selectIsAuthenticated = createSelector(
   selectAuth,

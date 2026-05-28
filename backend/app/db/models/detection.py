@@ -39,7 +39,10 @@ class DetectionJob(Base):
         index=True,
     )
     user_id: Mapped[str | None] = mapped_column(
-        String(36),
+        ForeignKey(
+            "users.id",
+            ondelete="SET NULL",
+        ),
         nullable=True,
         index=True,
     )
@@ -108,6 +111,10 @@ class DetectionJob(Base):
         back_populates="job",
         cascade="all, delete-orphan",
         passive_deletes=True,
+    )
+    user: Mapped["User | None"] = relationship(
+        "User",
+        back_populates="detection_jobs",
     )
 
     __table_args__ = (

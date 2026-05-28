@@ -1,16 +1,16 @@
-import { useEffect, type ReactNode } from 'react'
-import { useAppDispatch, useAppSelector } from '@/app/hooks'
+import { useEffect, useRef, type ReactNode } from 'react'
+import { useAppDispatch } from '@/app/hooks'
 import { useRefreshSessionMutation } from '@/features/auth/api/authApi'
-import { logout, selectAccessToken, selectAuthStatus, setSessionChecking } from '@/features/auth/authSlice'
+import { logout, setSessionChecking } from '@/features/auth/authSlice'
 
 export function SessionBootstrap({ children }: { children: ReactNode }) {
   const dispatch = useAppDispatch()
-  const accessToken = useAppSelector(selectAccessToken)
-  const status = useAppSelector(selectAuthStatus)
   const [refreshSession] = useRefreshSessionMutation()
+  const hasBootstrapped = useRef(false)
 
   useEffect(() => {
-    if (!accessToken || status !== 'authenticated') return
+    if (hasBootstrapped.current) return
+    hasBootstrapped.current = true
 
     dispatch(setSessionChecking())
 
@@ -19,7 +19,7 @@ export function SessionBootstrap({ children }: { children: ReactNode }) {
       .catch(() => {
         dispatch(logout())
       })
-  }, [accessToken, dispatch, refreshSession, status])
+  }, [dispatch, refreshSession])
 
   return children
 }
