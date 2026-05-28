@@ -97,3 +97,9 @@ class DetectionPersistenceService:
             limit=limit,
             offset=offset,
         )
+
+    async def delete_job(
+        self,
+        job_id: str,
+    ) -> bool:
+        return await self.repository.delete_job(job_id)

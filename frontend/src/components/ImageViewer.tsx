@@ -1,6 +1,9 @@
+import { useEffect, useState } from 'react'
 import { Boxes, ImageIcon, ScanLine } from 'lucide-react'
+import { useAppSelector } from '@/app/hooks'
 import { Panel } from '@/components/common/Panel'
 import { StatusBadge } from '@/components/common/StatusBadge'
+import { selectAccessToken } from '@/features/auth/authSlice'
 import type { DetectionBox } from '@/features/detection/detectionTypes'
 
 function toPercent(value: number) {
@@ -36,11 +39,69 @@ type ImageViewerProps = {
   alt?: string
 }
 
+function isProtectedDetectionImage(url: string) {
+  return url.includes('/api/v1/detect/jobs/') && url.includes('/image/')
+}
+
 export function ImageViewer({
   alt = 'Uploaded inspection image',
   boxes = [],
   imageUrl,
 }: ImageViewerProps) {
+  const accessToken = useAppSelector(selectAccessToken)
+  const [displayUrl, setDisplayUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!imageUrl) {
+      setDisplayUrl(null)
+      return undefined
+    }
+
+    if (imageUrl.startsWith('blob:') || !isProtectedDetectionImage(imageUrl)) {
+      setDisplayUrl(imageUrl)
+      return undefined
+    }
+
+    let objectUrl: string | null = null
+    let cancelled = false
+    const protectedImageUrl = imageUrl
+
+    async function loadProtectedImage() {
+      const response = await fetch(protectedImageUrl, {
+        credentials: 'include',
+        headers: accessToken
+          ? {
+            Authorization: `Bearer ${accessToken}`,
+          }
+          : undefined,
+      })
+
+      if (!response.ok) {
+        throw new Error('Unable to load protected detection image.')
+      }
+
+      const blob = await response.blob()
+      objectUrl = URL.createObjectURL(blob)
+
+      if (!cancelled) {
+        setDisplayUrl(objectUrl)
+      }
+    }
+
+    void loadProtectedImage().catch(() => {
+      if (!cancelled) {
+        setDisplayUrl(null)
+      }
+    })
+
+    return () => {
+      cancelled = true
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl)
+      }
+    }
+  }, [accessToken, imageUrl])
+
   return (
     <Panel
       action={
@@ -56,12 +117,12 @@ export function ImageViewer({
         <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-border bg-muted">
           <div className="absolute inset-0 bg-[linear-gradient(45deg,hsl(var(--border)/0.4)_25%,transparent_25%),linear-gradient(-45deg,hsl(var(--border)/0.4)_25%,transparent_25%),linear-gradient(45deg,transparent_75%,hsl(var(--border)/0.4)_75%),linear-gradient(-45deg,transparent_75%,hsl(var(--border)/0.4)_75%)] bg-[length:24px_24px] bg-[position:0_0,0_12px,12px_-12px,-12px_0]" aria-hidden="true" />
 
-          {imageUrl ? (
+          {displayUrl ? (
             <>
               <img
                 alt={alt}
                 className="relative z-10 h-full w-full object-contain"
-                src={imageUrl}
+                src={displayUrl}
               />
               <div className="pointer-events-none absolute inset-0 z-20">
                 {boxes.map((box, index) => {

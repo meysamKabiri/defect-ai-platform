@@ -11,19 +11,12 @@ import {
   Clock3,
   Cpu,
   Database,
-  LogOut,
-  ShieldCheck,
   Sparkles,
 } from 'lucide-react'
 import heic2any from 'heic2any'
 import { useAppDispatch, useAppSelector } from '@/app/hooks'
 import { DetectionCard } from '@/components/DetectionCard'
-import { Button } from '@/components/common/Button'
 import { Panel } from '@/components/common/Panel'
-import { StatusBadge } from '@/components/common/StatusBadge'
-import { ThemeToggle } from '@/components/common/ThemeToggle'
-import { useLogoutMutation } from '@/features/auth/api/authApi'
-import { selectCurrentUser } from '@/features/auth/authSlice'
 import type {
   DetectionJobResponse,
   DetectionResult,
@@ -128,58 +121,8 @@ function DashboardMetric({
   )
 }
 
-function DashboardHeader({
-  isLoggingOut,
-  onLogout,
-  userEmail,
-}: {
-  isLoggingOut: boolean
-  onLogout: () => void
-  userEmail?: string
-}) {
-  return (
-    <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="grid size-11 shrink-0 place-items-center rounded-2xl border border-border bg-surface text-primary shadow-card">
-            <ShieldCheck className="size-5" aria-hidden="true" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase text-muted-foreground">
-              Defect AI Platform
-            </p>
-            <h1 className="truncate text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-              Inspection command center
-            </h1>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge tone="success">Secure session</StatusBadge>
-          <span className="max-w-56 truncate rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-muted-foreground">
-            {userEmail ?? 'Authenticated operator'}
-          </span>
-          <ThemeToggle />
-          <Button
-            isLoading={isLoggingOut}
-            leftIcon={<LogOut className="size-4" aria-hidden="true" />}
-            onClick={onLogout}
-            size="sm"
-            type="button"
-            variant="secondary"
-          >
-            Logout
-          </Button>
-        </div>
-      </div>
-    </header>
-  )
-}
-
 export function DashboardPage() {
   const dispatch = useAppDispatch()
-  const user = useAppSelector(selectCurrentUser)
-  const [logout, { isLoading: isLoggingOut }] = useLogoutMutation()
   const { progress } = useAppSelector((state) => state.uploadProgress)
 
   const [file, setFile] = useState<File | null>(null)
@@ -329,14 +272,8 @@ export function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <DashboardHeader
-        isLoggingOut={isLoggingOut}
-        onLogout={() => void logout().unwrap().catch(() => undefined)}
-        userEmail={user?.email}
-      />
-
-      <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+    <main className="bg-background text-foreground">
+      <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-6">
         <section className="relative overflow-hidden rounded-2xl border border-border bg-surface p-5 shadow-card sm:p-6">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_20%,hsl(var(--primary)/0.16),transparent_30%),radial-gradient(circle_at_90%_10%,hsl(var(--success)/0.12),transparent_28%)]" aria-hidden="true" />
           <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">

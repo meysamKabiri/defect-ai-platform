@@ -161,7 +161,7 @@ async def refresh(
 
     if not refresh_token:
         raise HTTPException(
-            status_code=401,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing refresh token",
         )
 

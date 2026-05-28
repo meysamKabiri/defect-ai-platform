@@ -1,15 +1,25 @@
 from typing import Annotated
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends
+from fastapi import HTTPException
+from fastapi import status
 from fastapi.security import OAuth2PasswordBearer
 
+from app.core.database import get_db_session
 from app.core.security import decode_token
 from app.repositories.auth_repository import AuthRepository
-from app.core.database import get_db_session
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 repository = AuthRepository()
+
+
+def _authentication_error(detail: str = "Invalid token") -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail=detail,
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 async def get_current_user(
@@ -19,24 +29,15 @@ async def get_current_user(
     payload = decode_token(token)
 
     if not payload:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid token",
-        )
+        raise _authentication_error()
 
     if payload.get("type") != "access":
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid token type",
-        )
+        raise _authentication_error("Invalid token type")
 
-    user_id = payload.get("sub")
+    user_id = payload.get("user_id") or payload.get("sub")
 
     if not user_id:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid token",
-        )
+        raise _authentication_error()
 
     user = await repository.get_user_by_id(
         db,
@@ -44,15 +45,10 @@ async def get_current_user(
     )
 
     if not user or not user.is_active:
-        raise HTTPException(
-            status_code=401,
-            detail="User not found",
-        )
+        raise _authentication_error("User not found")
 
-    if payload.get("ver") != user.token_version:
-        raise HTTPException(
-            status_code=401,
-            detail="Token has been revoked",
-        )
+    token_version = payload.get("token_version", payload.get("ver"))
+    if token_version != user.token_version:
+        raise _authentication_error("Token has been revoked")
 
     return user

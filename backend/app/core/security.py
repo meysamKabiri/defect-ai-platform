@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from jose import jwt, JWTError
+from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from app.core.config import settings
+from app.core.roles import UserRole
 
 ALGORITHM = "HS256"
 
@@ -12,6 +13,10 @@ pwd_context = CryptContext(
     schemes=["bcrypt"],
     deprecated="auto",
 )
+
+
+def _token_role(role: object) -> str:
+    return str(getattr(role, "value", role))
 
 
 def hash_password(password: str) -> str:
@@ -28,16 +33,23 @@ def verify_password(
     )
 
 
-def create_access_token(user_id: str, token_version: int):
+def create_access_token(
+    user_id: str,
+    token_version: int,
+    role: UserRole | str,
+) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES,
     )
 
     payload = {
         "sub": str(user_id),
+        "user_id": str(user_id),
         "type": "access",
         "ver": token_version,
+        "token_version": token_version,
         "exp": expire,
+        "role": _token_role(role),
     }
 
     return jwt.encode(
@@ -47,16 +59,23 @@ def create_access_token(user_id: str, token_version: int):
     )
 
 
-def create_refresh_token(user_id: str, token_version: int):
+def create_refresh_token(
+    user_id: str,
+    token_version: int,
+    role: UserRole | str,
+) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
         days=settings.REFRESH_TOKEN_EXPIRE_DAYS,
     )
 
     payload = {
         "sub": str(user_id),
+        "user_id": str(user_id),
         "type": "refresh",
         "ver": token_version,
+        "token_version": token_version,
         "exp": expire,
+        "role": _token_role(role),
     }
 
     return jwt.encode(

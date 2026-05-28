@@ -1,8 +1,11 @@
+export type UserRole = 'super_admin' | 'admin' | 'engineer' | 'viewer'
+
 export type AuthUser = {
   id: string
   email: string
   full_name?: string | null
   name?: string
+  role: UserRole
   roles?: string[]
 }
 

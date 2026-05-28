@@ -158,6 +158,19 @@ class DetectionRepository:
         await self.session.flush()
         return job
 
+    async def delete_job(
+        self,
+        job_id: str,
+    ) -> bool:
+        job = await self.get_job(job_id)
+
+        if job is None:
+            return False
+
+        await self.session.delete(job)
+        await self.session.flush()
+        return True
+
     def _job_filter_statement(
         self,
         *,

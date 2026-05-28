@@ -1,12 +1,13 @@
 from fastapi import HTTPException, status
 
 from app.core.security import (
-    hash_password,
-    verify_password,
     create_access_token,
     create_refresh_token,
     decode_token,
+    hash_password,
+    verify_password,
 )
+from app.core.roles import UserRole
 
 from app.db.models.user import User
 from app.repositories.auth_repository import (
@@ -19,12 +20,31 @@ class AuthService:
     def __init__(self):
         self.repository = AuthRepository()
 
+    def _session_payload(
+        self,
+        user: User,
+        *,
+        access_token: str,
+        refresh_token: str,
+    ) -> dict:
+        return {
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "full_name": user.full_name,
+                "role": user.role.value,
+            },
+            "accessToken": access_token,
+            "refreshToken": refresh_token,
+        }
+
     async def create_initial_user(
         self,
         db,
         email: str,
         password: str,
         full_name: str | None = None,
+        role: UserRole = UserRole.ENGINEER,
     ):
         user_count = await self.repository.count_users(db)
 
@@ -39,6 +59,7 @@ class AuthService:
             full_name=full_name,
             hashed_password=hash_password(password),
             is_active=True,
+            role=role,
         )
 
         user = await self.repository.create_user(
@@ -46,21 +67,15 @@ class AuthService:
             user,
         )
 
-        access_token = create_access_token(
-            user.id,
-            user.token_version,
-        )
+        access_token = create_access_token(user.id, user.token_version, user.role)
 
-        refresh_token = create_refresh_token(
-            user.id,
-            user.token_version,
-        )
+        refresh_token = create_refresh_token(user.id, user.token_version, user.role)
 
-        return {
-            "user": user,
-            "accessToken": access_token,
-            "refreshToken": refresh_token,
-        }
+        return self._session_payload(
+            user,
+            access_token=access_token,
+            refresh_token=refresh_token,
+        )
 
     async def login(
         self,
@@ -91,18 +106,20 @@ class AuthService:
         access_token = create_access_token(
             user.id,
             user.token_version,
+            user.role,
         )
 
         refresh_token = create_refresh_token(
             user.id,
             user.token_version,
+            user.role,
         )
 
-        return {
-            "user": user,
-            "accessToken": access_token,
-            "refreshToken": refresh_token,
-        }
+        return self._session_payload(
+            user,
+            access_token=access_token,
+            refresh_token=refresh_token,
+        )
 
     async def refresh_session(
         self,
@@ -113,21 +130,21 @@ class AuthService:
 
         if not payload:
             raise HTTPException(
-                status_code=401,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid refresh token",
             )
 
         if payload.get("type") != "refresh":
             raise HTTPException(
-                status_code=401,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token type",
             )
 
-        user_id = payload.get("sub")
+        user_id = payload.get("user_id") or payload.get("sub")
 
         if not user_id:
             raise HTTPException(
-                status_code=401,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid refresh token",
             )
 
@@ -138,31 +155,34 @@ class AuthService:
 
         if not user or not user.is_active:
             raise HTTPException(
-                status_code=401,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not found",
             )
 
-        if payload.get("ver") != user.token_version:
+        token_version = payload.get("token_version", payload.get("ver"))
+        if token_version != user.token_version:
             raise HTTPException(
-                status_code=401,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Refresh token has been revoked",
             )
 
         access_token = create_access_token(
             user.id,
             user.token_version,
+            user.role,
         )
 
         refresh_token = create_refresh_token(
             user.id,
             user.token_version,
+            user.role,
         )
 
-        return {
-            "user": user,
-            "accessToken": access_token,
-            "refreshToken": refresh_token,
-        }
+        return self._session_payload(
+            user,
+            access_token=access_token,
+            refresh_token=refresh_token,
+        )
 
     async def logout(
         self,
