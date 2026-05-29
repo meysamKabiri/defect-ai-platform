@@ -22,6 +22,8 @@ class UploadService:
         self,
         file: UploadFile,
         db: AsyncSession,
+        user_id: str,
+        project_id: str | None = None,
     ):
 
         saved_image = await self.image_service.save_image(file)
@@ -33,6 +35,8 @@ class UploadService:
             job_id=job_id,
             original_filename=file.filename,
             image_url=saved_image["file_url"],
+            user_id=user_id,
+            project_id=project_id,
         )
         await db.commit()
 

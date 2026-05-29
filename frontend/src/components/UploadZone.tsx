@@ -1,6 +1,18 @@
 import { useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { ImagePlus, Loader2, UploadCloud, X } from 'lucide-react'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FileImage,
+  ImagePlus,
+  Loader2,
+  UploadCloud,
+  X,
+} from 'lucide-react'
+import { Button } from '@/components/common/Button'
+import { Panel } from '@/components/common/Panel'
+import { ProgressBar } from '@/components/common/ProgressBar'
+import { StatusBadge } from '@/components/common/StatusBadge'
 import { cn } from '@/lib/utils'
 
 type UploadStatus =
@@ -16,9 +28,61 @@ type UploadZoneProps = {
   progress: number
   status: UploadStatus
   isLoading: boolean
+  isDisabled?: boolean
+  disabledReason?: string
   onFileSelect: (file: File) => void
   onAnalyze: () => void
   onClear: () => void
+}
+
+const statusCopy: Record<UploadStatus, {
+  description: string
+  label: string
+  progress: (progress: number) => number
+}> = {
+  idle: {
+    label: 'Ready for image',
+    description: 'Select an inspection image to begin the defect analysis workflow.',
+    progress: () => 0,
+  },
+  uploading: {
+    label: 'Uploading image',
+    description: 'Transferring the source image to the FastAPI backend.',
+    progress: (progress) => progress,
+  },
+  queued: {
+    label: 'Queued for inference',
+    description: 'The Redis/RQ worker has received the job and is waiting for capacity.',
+    progress: () => 35,
+  },
+  processing: {
+    label: 'Running AI inference',
+    description: 'YOLOv8 is analyzing the image and generating detection boxes.',
+    progress: () => 76,
+  },
+  completed: {
+    label: 'Analysis complete',
+    description: 'Detection results are ready for review.',
+    progress: () => 100,
+  },
+  failed: {
+    label: 'Analysis failed',
+    description: 'The backend returned an error. Clear the image and try another upload.',
+    progress: () => 100,
+  },
+}
+
+function formatFileSize(size: number) {
+  return `${(size / 1024 / 1024).toFixed(2)} MB`
+}
+
+function getStatusIcon(status: UploadStatus) {
+  if (status === 'completed') return CheckCircle2
+  if (status === 'failed') return AlertTriangle
+  if (status === 'uploading' || status === 'queued' || status === 'processing') {
+    return Loader2
+  }
+  return UploadCloud
 }
 
 export function UploadZone({
@@ -26,6 +90,8 @@ export function UploadZone({
   progress,
   status,
   isLoading,
+  isDisabled = false,
+  disabledReason,
   onFileSelect,
   onAnalyze,
   onClear,
@@ -38,143 +104,145 @@ export function UploadZone({
     [onFileSelect],
   )
 
-  const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
-    onDrop,
+  const { getInputProps, getRootProps, isDragActive, isDragReject } = useDropzone({
     accept: {
       'image/*': ['.png', '.jpg', '.jpeg', '.heic', '.heif'],
     },
     maxFiles: 1,
     multiple: false,
+    onDrop,
+    disabled: isDisabled,
   })
 
-
-
-
-  const progressLabelMap = {
-    idle: 'Waiting for upload',
-    uploading: `${progress}% uploaded`,
-    queued: 'Queued for AI processing',
-    processing: 'AI is analyzing image',
-    completed: 'Detection completed',
-    failed: 'Detection failed',
-  }
-
-  const progressLabel =
-    progressLabelMap[status]
-
-
-  const progressValueMap = {
-    idle: 0,
-    uploading: progress,
-    queued: 25,
-    processing: 70,
-    completed: 100,
-    failed: 100,
-  }
-
-  const progressValue =
-    progressValueMap[status]
+  const copy = statusCopy[status]
+  const StatusIcon = getStatusIcon(status)
+  const progressValue = copy.progress(progress)
+  const canAnalyze = Boolean(file) && !isLoading && !isDisabled
 
   return (
-    <section className="rounded-lg border border-slate-800 bg-slate-950 p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-semibold text-white">
-            Input image
-          </h2>
-          <p className="mt-1 text-xs text-slate-500">
-            Backend accepts JPG, JPEG, and PNG.
-          </p>
-        </div>
-
-        {file && (
-          <button
-            type="button"
-            onClick={onClear}
-            className="inline-flex size-9 items-center justify-center rounded-md border border-slate-800 text-slate-500 transition hover:bg-slate-900 hover:text-white"
-            aria-label="Clear selected image"
-          >
-            <X className="size-4" />
-          </button>
-        )}
-      </div>
-
-      <div
-        {...getRootProps()}
-        className={cn(
-          'group grid min-h-[220px] cursor-pointer place-items-center rounded-lg border border-dashed border-slate-700 bg-slate-900/60 p-6 text-center transition',
-          isDragActive && 'border-cyan-300 bg-cyan-950/20',
-          isDragReject && 'border-red-400 bg-red-950/20',
-        )}
-      >
-        <input {...getInputProps()} />
-        <div className="flex max-w-xs flex-col items-center">
-          <div className="mb-4 grid size-12 place-items-center rounded-lg border border-slate-800 bg-slate-950 text-slate-400 transition group-hover:text-cyan-300">
-            <UploadCloud className="size-5" />
-          </div>
-
-          <p className="text-base font-semibold text-white">
-            {isDragActive ? 'Drop image' : 'Drop image or browse'}
-          </p>
-
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            HEIC uploads are converted to JPG before analysis.
-          </p>
-
-          <div className="mt-5 inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-medium text-slate-200">
-            <ImagePlus className="size-4" />
-            Browse image
-          </div>
-        </div>
-      </div>
-
-      {file && (
-        <div className="mt-4 rounded-lg border border-slate-800 bg-slate-900/70 p-3">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-white">{file.name}</p>
-              <p className="text-xs text-slate-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-            </div>
-
-            <button
-              type="button"
-              onClick={onAnalyze}
-              disabled={isLoading}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-cyan-300 px-4 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isLoading && <Loader2 className="size-4 animate-spin" />}
-              Analyze
-            </button>
-          </div>
-
-          {status !== 'idle' && (
-            <div className="mt-4">
-              <div className="mb-2 flex justify-between text-xs font-medium text-slate-500">
-                <span>{progressLabel}</span>
-                <span className="capitalize">{status}</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-slate-800">
-                <div
-                  className="h-full rounded-full bg-cyan-300 transition-all duration-300"
-
-                  style={{
-                    width: `${progressValue}%`,
-                  }}
-                />
-              </div>
-              <div className="mt-3 flex items-center gap-2 text-sm text-slate-400">
-                {(status === 'uploading' ||
-                  status === 'queued' ||
-                  status === 'processing') && (
-                    <Loader2 className="size-4 animate-spin" />
-                  )}
-
-                <span>{progressLabel}</span>
-              </div>
-            </div>
+    <Panel
+      action={<StatusBadge status={status}>{status}</StatusBadge>}
+      description="Upload production images for queued computer-vision inspection."
+      eyebrow="Input"
+      title="Inspection image"
+    >
+      <div className="grid gap-4 p-5">
+        <div
+          {...getRootProps()}
+          className={cn(
+            'group grid min-h-64 cursor-pointer place-items-center rounded-2xl border border-dashed border-border bg-background p-6 text-center outline-none transition hover:border-primary/60 hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-ring',
+            isDisabled && 'cursor-not-allowed opacity-60 hover:border-border hover:bg-background',
+            isDragActive && 'border-primary bg-primary/10',
+            isDragReject && 'border-danger bg-danger/10',
           )}
+        >
+          <input {...getInputProps()} aria-label="Upload inspection image" />
+
+          <div className="flex max-w-sm flex-col items-center">
+            <div
+              className={cn(
+                'mb-5 grid size-14 place-items-center rounded-2xl border border-border bg-surface text-primary shadow-card transition group-hover:scale-105',
+                isDragReject && 'text-danger',
+              )}
+            >
+              {isDragReject ? (
+                <AlertTriangle className="size-6" aria-hidden="true" />
+              ) : (
+                <UploadCloud className="size-6" aria-hidden="true" />
+              )}
+            </div>
+
+            <p className="text-lg font-semibold text-foreground">
+              {isDisabled
+                ? 'Select a project first'
+                : isDragActive
+                  ? 'Drop image to inspect'
+                  : 'Drop image or browse'}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {disabledReason ?? 'Supports JPG, PNG, and HEIC. HEIC images are converted before analysis.'}
+            </p>
+
+            <div className="mt-5 inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold text-foreground shadow-card transition group-hover:border-primary/40">
+              <ImagePlus className="size-4 text-primary" aria-hidden="true" />
+              Browse image
+            </div>
+          </div>
         </div>
-      )}
-    </section>
+
+        {file ? (
+          <div className="rounded-2xl border border-border bg-background p-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                  <FileImage className="size-5" aria-hidden="true" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-foreground">
+                    {file.name}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {formatFileSize(file.size)} · {file.type || 'image file'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  aria-label="Clear selected image"
+                  className="shrink-0"
+                  disabled={isLoading}
+                  onClick={onClear}
+                  size="md"
+                  type="button"
+                  variant="secondary"
+                >
+                  <X className="size-4" aria-hidden="true" />
+                </Button>
+                <Button
+                  className="shrink-0"
+                  disabled={!canAnalyze}
+                  isLoading={isLoading}
+                  leftIcon={<UploadCloud className="size-4" aria-hidden="true" />}
+                  onClick={onAnalyze}
+                  size="md"
+                  type="button"
+                >
+                  Analyze
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-border bg-surface p-3">
+              <div className="mb-3 flex items-center justify-between gap-3 text-sm">
+                <div className="flex items-center gap-2 font-semibold text-foreground">
+                  <StatusIcon
+                    className={cn(
+                      'size-4 text-primary',
+                      (status === 'uploading' || status === 'queued' || status === 'processing') && 'animate-spin',
+                      status === 'failed' && 'text-danger',
+                      status === 'completed' && 'text-success',
+                    )}
+                    aria-hidden="true"
+                  />
+                  {copy.label}
+                </div>
+                <span className="text-xs font-semibold text-muted-foreground">
+                  {Math.round(progressValue)}%
+                </span>
+              </div>
+              <ProgressBar label={copy.label} value={progressValue} />
+              <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                {copy.description}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-border bg-background p-4 text-sm leading-6 text-muted-foreground">
+            Select a source image to unlock analysis controls, preview rendering, and model output panels.
+          </div>
+        )}
+      </div>
+    </Panel>
   )
 }

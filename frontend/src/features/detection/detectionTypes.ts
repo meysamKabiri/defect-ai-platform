@@ -71,12 +71,42 @@ export type UploadDetectionResponse = {
   message: string;
 };
 
+export type AssignedProject = {
+  id: string;
+
+  name: string;
+
+  description?: string | null;
+
+  owner_id?: string | null;
+
+  is_active: boolean;
+
+  created_at?: string;
+
+  updated_at?: string;
+};
+
+export type AssignedProjectListResponse = {
+  items: AssignedProject[];
+
+  total: number;
+
+  limit: number;
+
+  offset: number;
+};
+
 export type DetectionJobResponse = {
   job_id?: string;
 
   status: DetectionStatus;
 
   rq_job_id?: string;
+
+  project_id?: string | null;
+
+  original_filename?: string | null;
 
   image_url?: string;
 
@@ -96,6 +126,36 @@ export type DetectionJobResponse = {
   model_version?: string;
 
   error?: string;
+
+  detection_count?: number;
+
+  created_at?: string;
+
+  updated_at?: string;
+
+  started_at?: string | null;
+
+  completed_at?: string | null;
+};
+
+export type DetectionJobListResponse = {
+  items: DetectionJobResponse[];
+
+  total: number;
+
+  limit: number;
+
+  offset: number;
+};
+
+export type DetectionJobQuery = {
+  projectId?: string;
+
+  status?: Exclude<DetectionStatus, "idle" | "uploading"> | "";
+
+  limit?: number;
+
+  offset?: number;
 };
 
 export type DetectionHistoryItem = {
