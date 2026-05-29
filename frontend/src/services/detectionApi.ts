@@ -1,15 +1,45 @@
 import { baseApi } from '@/services/baseApi'
 import type {
+  AssignedProjectListResponse,
+  DetectionJobListResponse,
+  DetectionJobQuery,
   DetectionJobResponse,
   UploadDetectionResponse,
 } from '@/features/detection/detectionTypes'
 
 export const detectionApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    uploadDetection: builder.mutation<UploadDetectionResponse, { file: File }>({
-      query: ({ file }) => {
+    getAssignedProjects: builder.query<AssignedProjectListResponse, void>({
+      query: () => '/projects/my?limit=100',
+      providesTags: ['AdminProjects'],
+    }),
+
+    getDetectionJobs: builder.query<DetectionJobListResponse, DetectionJobQuery | void>({
+      query: (filters) => {
+        const params = new URLSearchParams()
+        params.set('limit', String(filters?.limit ?? 20))
+        params.set('offset', String(filters?.offset ?? 0))
+
+        if (filters?.projectId) {
+          params.set('project_id', filters.projectId)
+        }
+
+        if (filters?.status) {
+          params.set('status', filters.status)
+        }
+
+        return `/detect/jobs?${params.toString()}`
+      },
+      providesTags: ['Detection'],
+    }),
+
+    uploadDetection: builder.mutation<UploadDetectionResponse, { file: File; projectId?: string }>({
+      query: ({ file, projectId }) => {
         const formData = new FormData()
         formData.append('file', file)
+        if (projectId) {
+          formData.append('project_id', projectId)
+        }
 
         return {
           url: '/detect/upload',
@@ -27,4 +57,9 @@ export const detectionApi = baseApi.injectEndpoints({
   }),
 })
 
-export const { useUploadDetectionMutation, useGetDetectionJobQuery } = detectionApi
+export const {
+  useGetAssignedProjectsQuery,
+  useGetDetectionJobQuery,
+  useGetDetectionJobsQuery,
+  useUploadDetectionMutation,
+} = detectionApi

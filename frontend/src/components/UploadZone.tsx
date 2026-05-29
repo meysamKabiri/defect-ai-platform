@@ -28,6 +28,8 @@ type UploadZoneProps = {
   progress: number
   status: UploadStatus
   isLoading: boolean
+  isDisabled?: boolean
+  disabledReason?: string
   onFileSelect: (file: File) => void
   onAnalyze: () => void
   onClear: () => void
@@ -88,6 +90,8 @@ export function UploadZone({
   progress,
   status,
   isLoading,
+  isDisabled = false,
+  disabledReason,
   onFileSelect,
   onAnalyze,
   onClear,
@@ -107,12 +111,13 @@ export function UploadZone({
     maxFiles: 1,
     multiple: false,
     onDrop,
+    disabled: isDisabled,
   })
 
   const copy = statusCopy[status]
   const StatusIcon = getStatusIcon(status)
   const progressValue = copy.progress(progress)
-  const canAnalyze = Boolean(file) && !isLoading
+  const canAnalyze = Boolean(file) && !isLoading && !isDisabled
 
   return (
     <Panel
@@ -126,6 +131,7 @@ export function UploadZone({
           {...getRootProps()}
           className={cn(
             'group grid min-h-64 cursor-pointer place-items-center rounded-2xl border border-dashed border-border bg-background p-6 text-center outline-none transition hover:border-primary/60 hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-ring',
+            isDisabled && 'cursor-not-allowed opacity-60 hover:border-border hover:bg-background',
             isDragActive && 'border-primary bg-primary/10',
             isDragReject && 'border-danger bg-danger/10',
           )}
@@ -147,10 +153,14 @@ export function UploadZone({
             </div>
 
             <p className="text-lg font-semibold text-foreground">
-              {isDragActive ? 'Drop image to inspect' : 'Drop image or browse'}
+              {isDisabled
+                ? 'Select a project first'
+                : isDragActive
+                  ? 'Drop image to inspect'
+                  : 'Drop image or browse'}
             </p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Supports JPG, PNG, and HEIC. HEIC images are converted before analysis.
+              {disabledReason ?? 'Supports JPG, PNG, and HEIC. HEIC images are converted before analysis.'}
             </p>
 
             <div className="mt-5 inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold text-foreground shadow-card transition group-hover:border-primary/40">

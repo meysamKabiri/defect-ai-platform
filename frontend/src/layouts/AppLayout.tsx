@@ -57,53 +57,68 @@ export function AppLayout() {
   const user = useAppSelector(selectCurrentUser)
   const [logout, { isLoading }] = useLogoutMutation()
   const visibleItems = navItems.filter((item) => canSeeItem(user?.role, item))
+  const shouldShowAside = visibleItems.length > 1
 
   return (
-    <div className="min-h-screen bg-background text-foreground lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
-      <aside className="border-b border-border bg-surface lg:min-h-screen lg:border-b-0 lg:border-r">
-        <div className="flex h-16 items-center gap-3 px-5">
-          <div className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary">
-            <Shield className="size-5" aria-hidden="true" />
+    <div
+      className={cn(
+        'min-h-screen bg-background text-foreground',
+        shouldShowAside && 'lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]',
+      )}
+    >
+      {shouldShowAside && (
+        <aside className="border-b border-border bg-surface lg:min-h-screen lg:border-b-0 lg:border-r">
+          <div className="flex h-16 items-center gap-3 px-5">
+            <div className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary">
+              <Shield className="size-5" aria-hidden="true" />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-foreground">Defect AI</p>
+              <p className="text-xs text-muted-foreground">Admin console</p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-foreground">Defect AI</p>
-            <p className="text-xs text-muted-foreground">Admin console</p>
-          </div>
-        </div>
 
-        <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:grid lg:overflow-visible lg:pb-0">
-          {visibleItems.map((item) => {
-            const Icon = item.icon
+          <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:grid lg:overflow-visible lg:pb-0">
+            {visibleItems.map((item) => {
+              const Icon = item.icon
 
-            return (
-              <NavLink
-                className={({ isActive }) =>
-                  cn(
-                    'flex h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground',
-                    isActive && 'bg-primary/10 text-primary',
-                  )
-                }
-                key={item.href}
-                to={item.href}
-              >
-                <Icon className="size-4" aria-hidden="true" />
-                {item.label}
-              </NavLink>
-            )
-          })}
-        </nav>
-      </aside>
+              return (
+                <NavLink
+                  className={({ isActive }) =>
+                    cn(
+                      'flex h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground',
+                      isActive && 'bg-primary/10 text-primary',
+                    )
+                  }
+                  key={item.href}
+                  to={item.href}
+                >
+                  <Icon className="size-4" aria-hidden="true" />
+                  {item.label}
+                </NavLink>
+              )
+            })}
+          </nav>
+        </aside>
+      )}
 
       <div className="min-w-0">
         <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur">
           <div className="flex min-h-16 flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase text-muted-foreground">
-                Secure workspace
-              </p>
-              <p className="truncate text-sm font-semibold text-foreground">
-                {user?.email ?? 'Authenticated user'}
-              </p>
+            <div className="flex min-w-0 items-center gap-3">
+              {!shouldShowAside && (
+                <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <Shield className="size-5" aria-hidden="true" />
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase text-muted-foreground">
+                  {shouldShowAside ? 'Secure workspace' : 'Defect AI'}
+                </p>
+                <p className="truncate text-sm font-semibold text-foreground">
+                  {user?.email ?? 'Authenticated user'}
+                </p>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">

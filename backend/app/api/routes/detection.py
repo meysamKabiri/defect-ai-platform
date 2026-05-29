@@ -4,6 +4,7 @@ from fastapi import (
     APIRouter,
     Depends,
     File,
+    Form,
     HTTPException,
     Query,
     Response,
@@ -26,6 +27,7 @@ from app.schemas.detection import DetectionBoxResponse
 from app.schemas.detection import DetectionJobListResponse
 from app.schemas.detection import PersistedDetectionJobResponse
 from app.services.detection_persistence_service import DetectionPersistenceService
+from app.repositories.project_repository import ProjectRepository
 from app.services.upload_service import UploadService
 
 router = APIRouter(
@@ -39,16 +41,35 @@ upload_service = UploadService()
 @router.post("/upload")
 async def upload_image(
     file: UploadFile = File(...),
+    project_id: str | None = Form(default=None),
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(require_permissions(Permission.JOB_CREATE)),
 ):
 
     try:
+        if project_id is not None:
+            project = await ProjectRepository(db).get_project(project_id)
+            if project is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Project not found",
+                )
+
+            can_use_project = (
+                has_permission(current_user, Permission.PROJECT_MANAGE)
+                or project.owner_id == current_user.id
+            )
+            if not can_use_project:
+                raise HTTPException(
+                    status_code=403,
+                    detail="You are not assigned to this project",
+                )
 
         return await upload_service.upload_image(
             file=file,
             db=db,
             user_id=current_user.id,
+            project_id=project_id,
         )
 
     except ValueError as e:
@@ -93,21 +114,22 @@ async def get_annotated_job_image(
 async def list_detection_jobs(
     status: str | None = None,
     class_name: str | None = None,
+    project_id: str | None = None,
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(require_permissions(Permission.JOB_READ)),
 ):
     persistence_service = DetectionPersistenceService(db)
-    user_id = (
-        None
-        if has_permission(current_user, Permission.JOB_READ_ALL)
-        else current_user.id
-    )
+    can_read_all = has_permission(current_user, Permission.JOB_READ_ALL)
+    project_owner_id = None if can_read_all else current_user.id
+    user_id = None
     jobs, total = await persistence_service.list_jobs(
         status=status,
         class_name=class_name,
         user_id=user_id,
+        project_id=project_id,
+        project_owner_id=project_owner_id,
         limit=limit,
         offset=offset,
     )
@@ -150,6 +172,7 @@ def _serialize_job(
         job_id=job.id,
         rq_job_id=job.rq_job_id,
         status=job.status,
+        project_id=job.project_id,
         original_filename=job.original_filename,
         image_url=f"/api/v1/detect/jobs/{job.id}/image/original"
         if job.image_url

@@ -17,6 +17,7 @@ from app.core.permissions import normalize_role
 from app.core.roles import UserRole
 from app.db.models.detection import DetectionJob
 from app.db.models.user import User
+from app.repositories.project_repository import ProjectRepository
 from app.services.detection_persistence_service import DetectionPersistenceService
 
 
@@ -107,6 +108,11 @@ def require_job_access(
             job,
             permission=permission,
         ):
+            if job.project_id is not None:
+                project = await ProjectRepository(db).get_project(job.project_id)
+                if project is not None and project.owner_id == current_user.id:
+                    return job
+
             raise forbidden_exception("You do not have access to this job")
 
         return job
