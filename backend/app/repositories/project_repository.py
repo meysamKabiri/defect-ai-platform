@@ -16,20 +16,27 @@ class ProjectRepository:
         name: str,
         description: str | None = None,
         owner_id: str | None = None,
+        workspace_id: str | None = None,
     ) -> Project:
         project = Project(
             name=name,
             description=description,
             owner_id=owner_id,
+            workspace_id=workspace_id,
         )
         self.session.add(project)
         await self.session.flush()
         return project
 
-    async def get_project(self, project_id: str) -> Project | None:
-        result = await self.session.execute(
-            select(Project).where(Project.id == project_id)
-        )
+    async def get_project(
+        self,
+        project_id: str,
+        workspace_id: str | None = None,
+    ) -> Project | None:
+        statement = select(Project).where(Project.id == project_id)
+        if workspace_id is not None:
+            statement = statement.where(Project.workspace_id == workspace_id)
+        result = await self.session.execute(statement)
         return result.scalar_one_or_none()
 
     async def list_projects(
@@ -37,6 +44,7 @@ class ProjectRepository:
         *,
         search: str | None = None,
         owner_id: str | None = None,
+        workspace_id: str | None = None,
         is_active: bool | None = None,
         limit: int = 20,
         offset: int = 0,
@@ -48,6 +56,9 @@ class ProjectRepository:
 
         if owner_id is not None:
             statement = statement.where(Project.owner_id == owner_id)
+
+        if workspace_id is not None:
+            statement = statement.where(Project.workspace_id == workspace_id)
 
         if is_active is not None:
             statement = statement.where(Project.is_active == is_active)

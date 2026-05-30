@@ -1,4 +1,4 @@
-import { LockKeyhole, UserPlus } from 'lucide-react'
+import { Building2, LockKeyhole } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export type AuthMode = 'login' | 'signUp'
@@ -19,8 +19,8 @@ const modes: Array<{
     value: 'login',
   },
   {
-    icon: UserPlus,
-    label: 'Create user',
+    icon: Building2,
+    label: 'New workspace',
     value: 'signUp',
   },
 ]

@@ -11,6 +11,7 @@ import { NotFoundPage } from '@/routes/pages/NotFoundPage'
 import { RootRedirect } from '@/routes/pages/RootRedirect'
 
 const AuthPage = lazy(() => import('@/features/auth/pages/AuthPage').then((module) => ({ default: module.AuthPage })))
+const AcceptInvitationPage = lazy(() => import('@/features/auth/pages/AcceptInvitationPage').then((module) => ({ default: module.AcceptInvitationPage })))
 const DashboardPage = lazy(() => import('@/features/detection/pages/DashboardPage').then((module) => ({ default: module.DashboardPage })))
 const UsersPage = lazy(() => import('@/features/admin/pages/UsersPage').then((module) => ({ default: module.UsersPage })))
 const RolesPage = lazy(() => import('@/features/admin/pages/RolesPage').then((module) => ({ default: module.RolesPage })))
@@ -43,6 +44,10 @@ export const router = createBrowserRouter([
           {
             path: ROUTES.auth,
             element: withSuspense(<AuthPage />),
+          },
+          {
+            path: ROUTES.acceptInvite,
+            element: withSuspense(<AcceptInvitationPage />),
           },
         ],
       },

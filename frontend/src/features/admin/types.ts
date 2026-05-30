@@ -1,4 +1,4 @@
-import type { UserRole } from '@/features/auth/types'
+import type { UserRole, WorkspaceRole } from '@/features/auth/types'
 
 export type AdminUser = {
   id: string
@@ -22,6 +22,7 @@ export type AdminProject = {
   name: string
   description?: string | null
   owner_id?: string | null
+  workspace_id?: string | null
   is_active: boolean
   created_at: string
   updated_at: string
@@ -43,4 +44,28 @@ export type CreateProjectPayload = {
 
 export type UpdateProjectPayload = Partial<CreateProjectPayload> & {
   is_active?: boolean
+}
+
+export type WorkspaceMember = {
+  user_id: string
+  email: string
+  full_name?: string | null
+  role: WorkspaceRole
+  status: 'ACTIVE' | 'REMOVED' | 'SUSPENDED'
+  joined_at: string
+}
+
+export type WorkspaceInvitation = {
+  id: string
+  workspace_id: string
+  email: string
+  role: WorkspaceRole
+  status: 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'REVOKED'
+  expires_at: string
+  accepted_at?: string | null
+  revoked_at?: string | null
+  invited_by_user_id?: string | null
+  created_at: string
+  updated_at: string
+  invite_url?: string | null
 }

@@ -1,7 +1,7 @@
 import { ShieldCheck } from 'lucide-react'
 import { Card } from '@/components/common/Card'
 import { ThemeToggle } from '@/components/common/ThemeToggle'
-import { CreateUserForm } from '@/features/auth/components/CreateUserForm'
+import { CreateWorkspaceForm } from '@/features/auth/components/CreateWorkspaceForm'
 import { AuthModeTabs, type AuthMode } from '@/features/auth/components/AuthModeTabs'
 import { LoginForm } from '@/features/auth/components/LoginForm'
 
@@ -21,9 +21,9 @@ const panelCopy: Record<AuthMode, {
     description: 'Continue into authenticated defect analysis, job tracking, and detection review workflows.',
   },
   signUp: {
-    eyebrow: 'First-time setup',
-    title: 'Create the first workspace user',
-    description: 'Initialize secure access for your production inspection environment. This is available only before any users exist.',
+    eyebrow: 'Workspace setup',
+    title: 'Create a company workspace',
+    description: 'Start a new private workspace. Existing workspaces stay invitation-only for member access.',
   },
 }
 
@@ -57,7 +57,7 @@ export function AuthPanel({ mode, onModeChange }: AuthPanelProps) {
         <AuthModeTabs mode={mode} onModeChange={onModeChange} />
 
         <Card className="mt-5 overflow-hidden border-border/80 bg-surface/95 p-6 shadow-card backdrop-blur sm:p-8">
-          {mode === 'login' ? <LoginForm /> : <CreateUserForm />}
+          {mode === 'login' ? <LoginForm /> : <CreateWorkspaceForm />}
         </Card>
 
         <div className="mt-5 rounded-2xl border border-border bg-surface/70 p-4 text-sm leading-6 text-muted-foreground shadow-card backdrop-blur">

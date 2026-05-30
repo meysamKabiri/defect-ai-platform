@@ -1,12 +1,14 @@
 import { createSelector, createSlice, type PayloadAction } from '@reduxjs/toolkit'
 import type { RootState } from '@/app/store'
 import { tokenStorage } from './tokenStorage'
-import type { AuthResponse, AuthUser, SessionStatus } from './types'
+import type { AuthResponse, AuthUser, SessionStatus, WorkspaceSummary } from './types'
 
 type AuthState = {
   user: AuthUser | null
   accessToken: string | null
   refreshToken: string | null
+  currentWorkspace: WorkspaceSummary | null
+  workspaces: WorkspaceSummary[]
   status: SessionStatus
   error: string | null
 }
@@ -14,11 +16,14 @@ type AuthState = {
 const persistedAccessToken = tokenStorage.getAccessToken()
 const persistedRefreshToken = tokenStorage.getRefreshToken()
 const persistedUser = tokenStorage.getUser()
+const persistedWorkspace = tokenStorage.getCurrentWorkspace()
 
 const initialState: AuthState = {
   user: persistedUser,
   accessToken: persistedAccessToken,
   refreshToken: persistedRefreshToken,
+  currentWorkspace: persistedWorkspace,
+  workspaces: persistedWorkspace ? [persistedWorkspace] : [],
   status: 'checking',
   error: null,
 }
@@ -36,6 +41,8 @@ const authSlice = createSlice({
       state.user = action.payload.user ?? state.user
       state.accessToken = action.payload.accessToken
       state.refreshToken = action.payload.refreshToken ?? state.refreshToken
+      state.workspaces = action.payload.workspaces ?? state.workspaces
+      state.currentWorkspace = action.payload.currentWorkspace ?? state.currentWorkspace
       state.status = 'authenticated'
       state.error = null
 
@@ -45,6 +52,7 @@ const authSlice = createSlice({
           refreshToken: action.payload.refreshToken,
         },
         action.payload.user,
+        action.payload.currentWorkspace,
       )
     },
 
@@ -61,6 +69,8 @@ const authSlice = createSlice({
       state.user = null
       state.accessToken = null
       state.refreshToken = null
+      state.currentWorkspace = null
+      state.workspaces = []
       state.status = 'anonymous'
       state.error = null
       tokenStorage.clearSession()
@@ -75,6 +85,8 @@ export const selectAuth = (state: RootState) => state.auth
 export const selectCurrentUser = (state: RootState) => state.auth.user
 export const selectAccessToken = (state: RootState) => state.auth.accessToken
 export const selectRefreshToken = (state: RootState) => state.auth.refreshToken
+export const selectCurrentWorkspace = (state: RootState) => state.auth.currentWorkspace
+export const selectWorkspaceRole = (state: RootState) => state.auth.currentWorkspace?.role ?? null
 export const selectAuthStatus = (state: RootState) => state.auth.status
 export const selectIsAuthenticated = createSelector(
   selectAuth,

@@ -9,10 +9,8 @@ import {
   Activity,
   Boxes,
   CalendarClock,
-  Clock3,
-  Database,
+  ClipboardCheck,
   RefreshCw,
-  Sparkles,
 } from 'lucide-react'
 import heic2any from 'heic2any'
 import { useAppDispatch, useAppSelector } from '@/app/hooks'
@@ -26,6 +24,7 @@ import type {
   HumanFeedbackType,
 } from '@/features/detection/detectionTypes'
 import { resetUploadProgress } from '@/features/detection/uploadProgressSlice'
+import { selectCurrentWorkspace } from '@/features/auth/authSlice'
 import { getImageUrl } from '@/lib/image'
 import {
   useGetAssignedProjectsQuery,
@@ -40,12 +39,6 @@ import { UploadZone } from '@/components/UploadZone'
 const ImageViewer = lazy(() =>
   import('@/components/ImageViewer').then((module) => ({
     default: module.ImageViewer,
-  })),
-)
-
-const StatsCard = lazy(() =>
-  import('@/components/StatsCard').then((module) => ({
-    default: module.StatsCard,
   })),
 )
 
@@ -95,11 +88,16 @@ function DashboardSkeleton({ label }: { label: string }) {
   )
 }
 
-function formatRuntime(value?: number) {
-  return value !== undefined ? `${value}s` : '--'
+const feedbackLabels: Record<HumanFeedbackType, string> = {
+  bad_image: 'Bad image',
+  correct: 'Correct',
+  false_positive: 'False positive',
+  missed_defect: 'Missed defect',
+  not_sure: 'Not sure',
+  wrong_class: 'Wrong class',
 }
 
-function DashboardMetric({
+function KpiTile({
   description,
   icon: Icon,
   label,
@@ -111,7 +109,7 @@ function DashboardMetric({
   value: string | number
 }) {
   return (
-    <article className="rounded-2xl border border-border bg-surface p-4 shadow-card transition hover:border-primary/30 hover:bg-primary/5">
+    <article className="rounded-2xl border border-border bg-surface p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p>
@@ -131,6 +129,7 @@ function DashboardMetric({
 export function DashboardPage() {
   const dispatch = useAppDispatch()
   const { progress } = useAppSelector((state) => state.uploadProgress)
+  const currentWorkspace = useAppSelector(selectCurrentWorkspace)
 
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -138,7 +137,7 @@ export function DashboardPage() {
   const [jobId, setJobId] = useState<string | null>(null)
   const [jobErrorMessage, setJobErrorMessage] = useState<string>()
   const [selectedProjectId, setSelectedProjectId] = useState('')
-  const { data: assignedProjects } = useGetAssignedProjectsQuery()
+  const { data: assignedProjects } = useGetAssignedProjectsQuery(currentWorkspace?.id)
   const selectedProject = assignedProjects?.items.find(
     (project) => project.id === selectedProjectId,
   )
@@ -238,6 +237,9 @@ export function DashboardPage() {
     getErrorMessage(error)
 
   const defectCount = result?.defects.length ?? currentJob?.detections?.length ?? currentJob?.result?.detections?.length ?? 0
+  const feedbackItems = feedbackData?.items ?? []
+  const latestFeedback = feedbackItems[0]
+  const reviewedCount = feedbackItems.length
 
   const replacePreviewUrl = (nextUrl: string | null) => {
     if (previewUrlRef.current) {
@@ -331,56 +333,51 @@ export function DashboardPage() {
 
   return (
     <main className="bg-background text-foreground">
-      <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-6">
-        <section className="rounded-2xl border border-border bg-surface p-5 shadow-card sm:p-6">
-          <div className="grid gap-5">
-            <div className="max-w-4xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase text-primary">
-                <Sparkles className="size-3.5" aria-hidden="true" />
-                AI-powered industrial QA
-              </div>
-              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                Upload, analyze, and review production defects with real-time model feedback.
-              </h2>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
-                Queue images through the FastAPI and Redis worker pipeline, monitor YOLOv8 inference, and inspect persisted detection metadata in one operator-focused workspace.
+      <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-5">
+        <section className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+          <div className="max-w-2xl">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs font-semibold uppercase text-muted-foreground">
+                Validation console
               </p>
+              <StatusBadge tone={selectedProjectId ? 'success' : 'warning'}>
+                {selectedProject?.name ?? 'No project'}
+              </StatusBadge>
             </div>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+              Inspect, validate, move on.
+            </h1>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Project-scoped image analysis with one-click operator feedback.
+            </p>
+          </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <DashboardMetric
-                description="Pipeline state"
-                icon={Activity}
-                label="Status"
-                value={uploadStatus}
-              />
-              <DashboardMetric
-                description="Worker reference"
-                icon={Database}
-                label="Job"
-                value={currentJob?.job_id ? currentJob.job_id.slice(0, 8) : 'No job'}
-              />
-              <DashboardMetric
-                description="Model findings"
-                icon={Boxes}
-                label="Defects"
-                value={defectCount}
-              />
-              <DashboardMetric
-                description="Inference time"
-                icon={Clock3}
-                label="Runtime"
-                value={formatRuntime(result?.processingTimeSeconds)}
-              />
-            </div>
+          <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[34rem]">
+            <KpiTile
+              description="Pipeline state"
+              icon={Activity}
+              label="Status"
+              value={uploadStatus}
+            />
+            <KpiTile
+              description="Current model findings"
+              icon={Boxes}
+              label="Defects"
+              value={defectCount}
+            />
+            <KpiTile
+              description={latestFeedback ? feedbackLabels[latestFeedback.feedback_type] : 'Awaiting review'}
+              icon={ClipboardCheck}
+              label="Feedback"
+              value={reviewedCount}
+            />
           </div>
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)]">
-          <aside className="grid gap-6 xl:sticky xl:top-24 xl:self-start">
+        <section className="grid items-start gap-5 xl:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)]">
+          <aside className="grid min-w-0 gap-5 xl:sticky xl:top-24">
             <Panel
-              description="Engineers can run inspection work only in projects assigned to them."
-              eyebrow="Assigned work"
+              eyebrow="Scope"
               title="Project"
             >
               <div className="grid gap-3 p-5">
@@ -405,9 +402,12 @@ export function DashboardPage() {
                   )}
                 </div>
                 {selectedProject?.description ? (
-                  <p className="rounded-xl border border-border bg-background p-3 text-xs leading-5 text-muted-foreground">
-                    {selectedProject.description}
-                  </p>
+                  <details className="rounded-xl border border-border bg-background p-3 text-xs leading-5 text-muted-foreground">
+                    <summary className="cursor-pointer font-semibold text-foreground">
+                      Project notes
+                    </summary>
+                    <p className="mt-2">{selectedProject.description}</p>
+                  </details>
                 ) : null}
               </div>
             </Panel>
@@ -424,23 +424,15 @@ export function DashboardPage() {
               status={uploadStatus}
             />
 
-            <Suspense fallback={<DashboardSkeleton label="Loading inspection summary" />}>
-              <StatsCard job={currentJob} result={result} />
-            </Suspense>
-          </aside>
-
-          <div className="grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1fr)_26rem]">
-            <div className="grid gap-6">
-              <Suspense fallback={<DashboardSkeleton label="Loading inspection canvas" />}>
-                <ImageViewer
-                  alt={file?.name ?? 'Inspection preview'}
-                  boxes={result?.defects}
-                  imageUrl={displayImageUrl}
-                />
-              </Suspense>
-
-              <Panel
-                action={
+            <details className="rounded-2xl border border-border bg-surface shadow-card">
+              <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-foreground">
+                Recent inspections
+              </summary>
+              <div className="border-t border-border">
+                <div className="flex items-center justify-between gap-3 px-5 py-3">
+                  <p className="text-xs text-muted-foreground">
+                    {projectJobs?.total ?? 0} project jobs
+                  </p>
                   <button
                     aria-label="Refresh project jobs"
                     className="grid size-9 place-items-center rounded-xl border border-border bg-background text-muted-foreground transition hover:border-primary/40 hover:text-primary"
@@ -453,20 +445,16 @@ export function DashboardPage() {
                       aria-hidden="true"
                     />
                   </button>
-                }
-                description="Track recent jobs for the selected project without leaving the engineer workspace."
-                eyebrow="Project queue"
-                title="Recent inspections"
-              >
-                <div className="grid gap-3 p-5">
+                </div>
+                <div className="grid max-h-80 gap-3 overflow-auto p-5 pt-0">
                   {!selectedProjectId ? (
-                    <div className="rounded-2xl border border-border bg-background p-5 text-sm leading-6 text-muted-foreground">
-                      Select a project to load its inspection queue.
+                    <div className="rounded-2xl border border-border bg-background p-4 text-sm leading-6 text-muted-foreground">
+                      Select a project to load its queue.
                     </div>
                   ) : projectJobs?.items.length ? (
                     projectJobs.items.map((job) => (
                       <button
-                        className="grid gap-3 rounded-2xl border border-border bg-background p-4 text-left transition hover:border-primary/40 hover:bg-primary/5 sm:grid-cols-[minmax(0,1fr)_auto]"
+                        className="grid gap-3 rounded-2xl border border-border bg-background p-4 text-left transition hover:border-primary/40 hover:bg-primary/5"
                         key={job.job_id}
                         onClick={() => job.job_id && setJobId(job.job_id)}
                         type="button"
@@ -489,23 +477,30 @@ export function DashboardPage() {
                             </span>
                           </div>
                         </div>
-                        <span className="text-xs font-semibold text-primary">
-                          Review
-                        </span>
                       </button>
                     ))
                   ) : (
-                    <div className="rounded-2xl border border-border bg-background p-5 text-sm leading-6 text-muted-foreground">
-                      No inspections have been created for this project yet.
+                    <div className="rounded-2xl border border-border bg-background p-4 text-sm leading-6 text-muted-foreground">
+                      No inspections for this project yet.
                     </div>
                   )}
                 </div>
-              </Panel>
-            </div>
+              </div>
+            </details>
+          </aside>
+
+          <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,24rem)]">
+            <Suspense fallback={<DashboardSkeleton label="Loading inspection canvas" />}>
+              <ImageViewer
+                alt={file?.name ?? 'Inspection preview'}
+                boxes={result?.defects}
+                imageUrl={displayImageUrl}
+              />
+            </Suspense>
 
             <DetectionCard
               error={errorMessage}
-              feedbackItems={feedbackData?.items}
+              feedbackItems={feedbackItems}
               isLoading={isUploading || isAnalyzing}
               isSubmittingFeedback={isSubmittingFeedback}
               job={currentJob}

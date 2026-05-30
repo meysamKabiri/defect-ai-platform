@@ -122,7 +122,6 @@ export function UploadZone({
   return (
     <Panel
       action={<StatusBadge status={status}>{status}</StatusBadge>}
-      description="Upload production images for queued computer-vision inspection."
       eyebrow="Input"
       title="Inspection image"
     >
@@ -130,7 +129,7 @@ export function UploadZone({
         <div
           {...getRootProps()}
           className={cn(
-            'group grid min-h-64 cursor-pointer place-items-center rounded-2xl border border-dashed border-border bg-background p-6 text-center outline-none transition hover:border-primary/60 hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-ring',
+            'group grid min-h-44 cursor-pointer place-items-center rounded-2xl border border-dashed border-border bg-background p-5 text-center outline-none transition hover:border-primary/60 hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-ring',
             isDisabled && 'cursor-not-allowed opacity-60 hover:border-border hover:bg-background',
             isDragActive && 'border-primary bg-primary/10',
             isDragReject && 'border-danger bg-danger/10',
@@ -141,7 +140,7 @@ export function UploadZone({
           <div className="flex max-w-sm flex-col items-center">
             <div
               className={cn(
-                'mb-5 grid size-14 place-items-center rounded-2xl border border-border bg-surface text-primary shadow-card transition group-hover:scale-105',
+                'mb-4 grid size-12 place-items-center rounded-2xl border border-border bg-surface text-primary shadow-card transition group-hover:scale-105',
                 isDragReject && 'text-danger',
               )}
             >
@@ -152,7 +151,7 @@ export function UploadZone({
               )}
             </div>
 
-            <p className="text-lg font-semibold text-foreground">
+            <p className="text-base font-semibold text-foreground">
               {isDisabled
                 ? 'Select a project first'
                 : isDragActive
@@ -163,7 +162,7 @@ export function UploadZone({
               {disabledReason ?? 'Supports JPG, PNG, and HEIC. HEIC images are converted before analysis.'}
             </p>
 
-            <div className="mt-5 inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold text-foreground shadow-card transition group-hover:border-primary/40">
+            <div className="mt-4 inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold text-foreground shadow-card transition group-hover:border-primary/40">
               <ImagePlus className="size-4 text-primary" aria-hidden="true" />
               Browse image
             </div>

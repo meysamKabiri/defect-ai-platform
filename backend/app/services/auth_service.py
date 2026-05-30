@@ -13,6 +13,7 @@ from app.db.models.user import User
 from app.repositories.auth_repository import (
     AuthRepository,
 )
+from app.services.workspace_service import WorkspaceService
 
 
 class AuthService:
@@ -20,23 +21,19 @@ class AuthService:
     def __init__(self):
         self.repository = AuthRepository()
 
-    def _session_payload(
+    async def _session_payload(
         self,
+        db,
         user: User,
         *,
         access_token: str,
         refresh_token: str,
     ) -> dict:
-        return {
-            "user": {
-                "id": user.id,
-                "email": user.email,
-                "full_name": user.full_name,
-                "role": user.role.value,
-            },
-            "accessToken": access_token,
-            "refreshToken": refresh_token,
-        }
+        return await WorkspaceService(db).session_payload(
+            user=user,
+            access_token=access_token,
+            refresh_token=refresh_token,
+        )
 
     async def create_initial_user(
         self,
@@ -71,7 +68,8 @@ class AuthService:
 
         refresh_token = create_refresh_token(user.id, user.token_version, user.role)
 
-        return self._session_payload(
+        return await self._session_payload(
+            db,
             user,
             access_token=access_token,
             refresh_token=refresh_token,
@@ -115,7 +113,8 @@ class AuthService:
             user.role,
         )
 
-        return self._session_payload(
+        return await self._session_payload(
+            db,
             user,
             access_token=access_token,
             refresh_token=refresh_token,
@@ -178,7 +177,8 @@ class AuthService:
             user.role,
         )
 
-        return self._session_payload(
+        return await self._session_payload(
+            db,
             user,
             access_token=access_token,
             refresh_token=refresh_token,

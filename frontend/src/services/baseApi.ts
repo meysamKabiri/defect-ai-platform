@@ -22,6 +22,8 @@ function normalizeAuthResponse(response: ApiAuthResponse): AuthResponse {
     user: response.user,
     accessToken,
     refreshToken,
+    workspaces: response.workspaces ?? [],
+    currentWorkspace: response.current_workspace ?? response.workspace ?? response.workspaces?.[0] ?? null,
   }
 }
 
@@ -81,7 +83,7 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
 export const baseApi = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithReauth,
-  tagTypes: ['Auth', 'Detection', 'AdminUsers', 'AdminProjects', 'AdminRoles'],
+  tagTypes: ['Auth', 'Detection', 'AdminUsers', 'AdminProjects', 'AdminRoles', 'WorkspaceMembers', 'WorkspaceInvitations'],
   endpoints: () => ({}),
 })
 

@@ -12,8 +12,11 @@ import type {
 
 export const detectionApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getAssignedProjects: builder.query<AssignedProjectListResponse, void>({
-      query: () => '/projects/my?limit=100',
+    getAssignedProjects: builder.query<AssignedProjectListResponse, string | void>({
+      query: (workspaceId) =>
+        workspaceId
+          ? `/workspaces/${workspaceId}/projects?limit=100&is_active=true`
+          : '/projects/my?limit=100',
       providesTags: ['AdminProjects'],
     }),
 
