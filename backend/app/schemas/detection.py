@@ -1,5 +1,6 @@
 from typing import Optional
 from datetime import datetime
+from enum import StrEnum
 
 from pydantic import BaseModel
 from pydantic import Field
@@ -72,3 +73,34 @@ class DetectionJobListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class FeedbackType(StrEnum):
+    CORRECT = "correct"
+    FALSE_POSITIVE = "false_positive"
+    WRONG_CLASS = "wrong_class"
+    MISSED_DEFECT = "missed_defect"
+    NOT_SURE = "not_sure"
+    BAD_IMAGE = "bad_image"
+
+
+class HumanFeedbackCreateRequest(BaseModel):
+    feedback_type: FeedbackType
+    detection_box_id: str | None = None
+    corrected_class_name: str | None = Field(default=None, max_length=128)
+    comment: str | None = Field(default=None, max_length=1000)
+
+
+class HumanFeedbackResponse(BaseModel):
+    id: str
+    job_id: str
+    detection_box_id: str | None = None
+    reviewer_id: str | None = None
+    feedback_type: FeedbackType
+    corrected_class_name: str | None = None
+    comment: str | None = None
+    created_at: datetime
+
+
+class HumanFeedbackListResponse(BaseModel):
+    items: list[HumanFeedbackResponse]

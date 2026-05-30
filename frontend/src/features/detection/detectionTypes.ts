@@ -175,3 +175,43 @@ export type DetectionHistoryResponse = {
 
   total: number;
 };
+
+export type HumanFeedbackType =
+  | "correct"
+  | "false_positive"
+  | "wrong_class"
+  | "missed_defect"
+  | "not_sure"
+  | "bad_image";
+
+export type HumanFeedbackCreateRequest = {
+  feedback_type: HumanFeedbackType;
+
+  detection_box_id?: string;
+
+  corrected_class_name?: string;
+
+  comment?: string;
+};
+
+export type HumanFeedbackResponse = {
+  id: string;
+
+  job_id: string;
+
+  detection_box_id?: string | null;
+
+  reviewer_id?: string | null;
+
+  feedback_type: HumanFeedbackType;
+
+  corrected_class_name?: string | null;
+
+  comment?: string | null;
+
+  created_at: string;
+};
+
+export type HumanFeedbackListResponse = {
+  items: HumanFeedbackResponse[];
+};

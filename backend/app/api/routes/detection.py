@@ -22,9 +22,13 @@ from app.core.permissions import Permission
 from app.core.permissions import has_permission
 from app.db.models.detection import DetectionBox
 from app.db.models.detection import DetectionJob
+from app.db.models.detection import HumanFeedback
 from app.db.models.user import User
 from app.schemas.detection import DetectionBoxResponse
 from app.schemas.detection import DetectionJobListResponse
+from app.schemas.detection import HumanFeedbackCreateRequest
+from app.schemas.detection import HumanFeedbackListResponse
+from app.schemas.detection import HumanFeedbackResponse
 from app.schemas.detection import PersistedDetectionJobResponse
 from app.services.detection_persistence_service import DetectionPersistenceService
 from app.repositories.project_repository import ProjectRepository
@@ -85,6 +89,63 @@ async def get_detection_job(
     job: DetectionJob = Depends(require_job_access(Permission.JOB_READ)),
 ):
     return _serialize_job(job)
+
+
+@router.get(
+    "/jobs/{job_id}/feedback",
+    response_model=HumanFeedbackListResponse,
+)
+async def list_job_feedback(
+    db: AsyncSession = Depends(get_db_session),
+    job: DetectionJob = Depends(require_job_access(Permission.JOB_READ)),
+):
+    persistence_service = DetectionPersistenceService(db)
+    feedback_items = await persistence_service.list_feedback(job_id=job.id)
+
+    return {
+        "items": [
+            _serialize_feedback(feedback)
+            for feedback in feedback_items
+        ],
+    }
+
+
+@router.post(
+    "/jobs/{job_id}/feedback",
+    response_model=HumanFeedbackResponse,
+    status_code=http_status.HTTP_201_CREATED,
+)
+async def create_job_feedback(
+    payload: HumanFeedbackCreateRequest,
+    db: AsyncSession = Depends(get_db_session),
+    job: DetectionJob = Depends(require_job_access(Permission.JOB_READ)),
+    current_user: User = Depends(require_permissions(Permission.JOB_READ)),
+):
+    persistence_service = DetectionPersistenceService(db)
+
+    if payload.detection_box_id is not None:
+        belongs_to_job = await persistence_service.detection_box_belongs_to_job(
+            detection_box_id=payload.detection_box_id,
+            job_id=job.id,
+        )
+        if not belongs_to_job:
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="Detection box does not belong to this job",
+            )
+
+    feedback = await persistence_service.create_feedback(
+        job_id=job.id,
+        detection_box_id=payload.detection_box_id,
+        reviewer_id=current_user.id,
+        feedback_type=payload.feedback_type.value,
+        corrected_class_name=payload.corrected_class_name,
+        comment=payload.comment,
+    )
+    await db.commit()
+    await db.refresh(feedback)
+
+    return _serialize_feedback(feedback)
 
 
 @router.get("/jobs/{job_id}/image/original")
@@ -233,4 +294,19 @@ def _serialize_detection_box(
         y=detection.y,
         width=detection.width,
         height=detection.height,
+    )
+
+
+def _serialize_feedback(
+    feedback: HumanFeedback,
+) -> HumanFeedbackResponse:
+    return HumanFeedbackResponse(
+        id=feedback.id,
+        job_id=feedback.job_id,
+        detection_box_id=feedback.detection_box_id,
+        reviewer_id=feedback.reviewer_id,
+        feedback_type=feedback.feedback_type,
+        corrected_class_name=feedback.corrected_class_name,
+        comment=feedback.comment,
+        created_at=feedback.created_at,
     )

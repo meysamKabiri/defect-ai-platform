@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app.db.models.detection import DetectionBox
 from app.db.models.detection import DetectionJob
+from app.db.models.detection import HumanFeedback
 from app.db.models.project import Project
 
 
@@ -175,6 +176,54 @@ class DetectionRepository:
         await self.session.delete(job)
         await self.session.flush()
         return True
+
+    async def detection_box_belongs_to_job(
+        self,
+        *,
+        detection_box_id: str,
+        job_id: str,
+    ) -> bool:
+        statement = select(DetectionBox.id).where(
+            DetectionBox.id == detection_box_id,
+            DetectionBox.job_id == job_id,
+        )
+        result = await self.session.execute(statement)
+        return result.scalar_one_or_none() is not None
+
+    async def create_feedback(
+        self,
+        *,
+        job_id: str,
+        feedback_type: str,
+        reviewer_id: str | None,
+        detection_box_id: str | None = None,
+        corrected_class_name: str | None = None,
+        comment: str | None = None,
+    ) -> HumanFeedback:
+        feedback = HumanFeedback(
+            job_id=job_id,
+            detection_box_id=detection_box_id,
+            reviewer_id=reviewer_id,
+            feedback_type=feedback_type,
+            corrected_class_name=corrected_class_name,
+            comment=comment,
+        )
+        self.session.add(feedback)
+        await self.session.flush()
+        return feedback
+
+    async def list_feedback(
+        self,
+        *,
+        job_id: str,
+    ) -> list[HumanFeedback]:
+        statement = (
+            select(HumanFeedback)
+            .where(HumanFeedback.job_id == job_id)
+            .order_by(HumanFeedback.created_at.desc())
+        )
+        result = await self.session.execute(statement)
+        return list(result.scalars())
 
     def _job_filter_statement(
         self,

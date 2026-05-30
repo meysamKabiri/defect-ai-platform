@@ -23,6 +23,7 @@ import type {
   DetectionJobResponse,
   DetectionResult,
   DetectionStatus,
+  HumanFeedbackType,
 } from '@/features/detection/detectionTypes'
 import { resetUploadProgress } from '@/features/detection/uploadProgressSlice'
 import { getImageUrl } from '@/lib/image'
@@ -30,6 +31,8 @@ import {
   useGetAssignedProjectsQuery,
   useGetDetectionJobQuery,
   useGetDetectionJobsQuery,
+  useGetJobFeedbackQuery,
+  useCreateJobFeedbackMutation,
   useUploadDetectionMutation,
 } from '@/services/detectionApi'
 import { UploadZone } from '@/components/UploadZone'
@@ -170,6 +173,11 @@ export function DashboardPage() {
     skip: !jobId,
     skipPollingIfUnfocused: true,
   })
+  const { currentData: feedbackData } = useGetJobFeedbackQuery(jobId!, {
+    skip: !jobId || jobData?.status !== 'completed',
+  })
+  const [createJobFeedback, { isLoading: isSubmittingFeedback }] =
+    useCreateJobFeedbackMutation()
 
   useEffect(() => {
     return () => {
@@ -301,6 +309,24 @@ export function DashboardPage() {
     resetUploadDetection()
     replacePreviewUrl(null)
     dispatch(resetUploadProgress())
+  }
+
+  const handleSubmitFeedback = async (feedbackType: HumanFeedbackType) => {
+    if (!currentJob?.job_id || currentJob.status !== 'completed') return
+
+    try {
+      setJobErrorMessage(undefined)
+      await createJobFeedback({
+        jobId: currentJob.job_id,
+        payload: {
+          feedback_type: feedbackType,
+        },
+      }).unwrap()
+    } catch (requestError) {
+      setJobErrorMessage(
+        getErrorMessage(requestError) ?? 'Unable to save operator feedback.',
+      )
+    }
   }
 
   return (
@@ -479,8 +505,11 @@ export function DashboardPage() {
 
             <DetectionCard
               error={errorMessage}
+              feedbackItems={feedbackData?.items}
               isLoading={isUploading || isAnalyzing}
+              isSubmittingFeedback={isSubmittingFeedback}
               job={currentJob}
+              onSubmitFeedback={handleSubmitFeedback}
               result={result}
             />
           </div>

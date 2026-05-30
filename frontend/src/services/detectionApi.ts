@@ -4,6 +4,9 @@ import type {
   DetectionJobListResponse,
   DetectionJobQuery,
   DetectionJobResponse,
+  HumanFeedbackCreateRequest,
+  HumanFeedbackListResponse,
+  HumanFeedbackResponse,
   UploadDetectionResponse,
 } from '@/features/detection/detectionTypes'
 
@@ -54,12 +57,33 @@ export const detectionApi = baseApi.injectEndpoints({
       query: (jobId) => `/detect/jobs/${jobId}`,
       providesTags: (_result, _error, jobId) => [{ type: 'Detection', id: jobId }],
     }),
+
+    getJobFeedback: builder.query<HumanFeedbackListResponse, string>({
+      query: (jobId) => `/detect/jobs/${jobId}/feedback`,
+      providesTags: (_result, _error, jobId) => [{ type: 'Detection', id: `${jobId}:feedback` }],
+    }),
+
+    createJobFeedback: builder.mutation<
+      HumanFeedbackResponse,
+      { jobId: string; payload: HumanFeedbackCreateRequest }
+    >({
+      query: ({ jobId, payload }) => ({
+        url: `/detect/jobs/${jobId}/feedback`,
+        method: 'POST',
+        body: payload,
+      }),
+      invalidatesTags: (_result, _error, { jobId }) => [
+        { type: 'Detection', id: `${jobId}:feedback` },
+      ],
+    }),
   }),
 })
 
 export const {
+  useCreateJobFeedbackMutation,
   useGetAssignedProjectsQuery,
   useGetDetectionJobQuery,
   useGetDetectionJobsQuery,
+  useGetJobFeedbackQuery,
   useUploadDetectionMutation,
 } = detectionApi

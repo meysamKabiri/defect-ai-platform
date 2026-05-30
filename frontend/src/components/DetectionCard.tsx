@@ -13,6 +13,8 @@ import type {
   DetectionBox,
   DetectionJobResponse,
   DetectionResult,
+  HumanFeedbackResponse,
+  HumanFeedbackType,
 } from '@/features/detection/detectionTypes'
 import { cn } from '@/lib/utils'
 
@@ -20,8 +22,27 @@ type DetectionCardProps = {
   result?: DetectionResult
   job?: DetectionJobResponse
   error?: string
+  feedbackItems?: HumanFeedbackResponse[]
   isLoading?: boolean
+  isSubmittingFeedback?: boolean
+  onSubmitFeedback?: (feedbackType: HumanFeedbackType) => void
 }
+
+const feedbackOptions: Array<{
+  label: string
+  value: HumanFeedbackType
+}> = [
+  { label: 'Correct', value: 'correct' },
+  { label: 'False Positive', value: 'false_positive' },
+  { label: 'Wrong Class', value: 'wrong_class' },
+  { label: 'Missed Defect', value: 'missed_defect' },
+  { label: 'Not Sure', value: 'not_sure' },
+  { label: 'Bad Image', value: 'bad_image' },
+]
+
+const feedbackLabelByType = Object.fromEntries(
+  feedbackOptions.map((option) => [option.value, option.label]),
+) as Record<HumanFeedbackType, string>
 
 function formatPercent(value?: number) {
   if (value === undefined) return '--'
@@ -96,8 +117,11 @@ function EmptyDetectionState({
 
 export function DetectionCard({
   error,
+  feedbackItems = [],
   isLoading,
+  isSubmittingFeedback,
   job,
+  onSubmitFeedback,
   result,
 }: DetectionCardProps) {
   const defects = getDetections(result, job)
@@ -109,6 +133,12 @@ export function DetectionCard({
     result?.processingTimeSeconds ??
     job?.processing_time_seconds
   const status = job?.status ?? result?.status ?? 'idle'
+  const canSubmitFeedback =
+    Boolean(job?.job_id ?? result?.jobId) &&
+    status === 'completed' &&
+    !isLoading &&
+    Boolean(onSubmitFeedback)
+  const latestFeedback = feedbackItems[0]
 
   return (
     <Panel
@@ -243,6 +273,44 @@ export function DetectionCard({
               })}
             </div>
           )}
+        </div>
+
+        <div className="rounded-2xl border border-border bg-background p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Operator feedback</h3>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Capture one-click validation signal for the current prediction.
+              </p>
+            </div>
+            {latestFeedback ? (
+              <StatusBadge tone="primary">
+                Latest: {feedbackLabelByType[latestFeedback.feedback_type]}
+              </StatusBadge>
+            ) : (
+              <StatusBadge tone="warning">Unreviewed</StatusBadge>
+            )}
+          </div>
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {feedbackOptions.map((option) => (
+              <button
+                className="min-h-10 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold text-foreground transition hover:border-primary/40 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={!canSubmitFeedback || isSubmittingFeedback}
+                key={option.value}
+                onClick={() => onSubmitFeedback?.(option.value)}
+                type="button"
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
+          {!canSubmitFeedback ? (
+            <p className="mt-3 text-xs leading-5 text-muted-foreground">
+              Feedback unlocks after a completed detection job is loaded.
+            </p>
+          ) : null}
         </div>
 
         <div className="flex gap-3 rounded-2xl border border-border bg-background p-4 text-sm leading-6 text-muted-foreground">
