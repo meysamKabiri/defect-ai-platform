@@ -20,7 +20,7 @@ const modes: Array<{
   },
   {
     icon: Building2,
-    label: 'New workspace',
+    label: 'Create workspace',
     value: 'signUp',
   },
 ]

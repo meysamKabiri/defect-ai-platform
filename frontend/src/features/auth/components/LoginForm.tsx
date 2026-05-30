@@ -41,7 +41,7 @@ export function LoginForm() {
         label="Email"
         type="email"
         autoComplete="email"
-        placeholder="you@company.com"
+        placeholder="qa.lead@company.com"
         error={errors.email?.message}
         {...register('email')}
       />
@@ -50,7 +50,7 @@ export function LoginForm() {
         label="Password"
         type="password"
         autoComplete="current-password"
-        placeholder="Enter your password"
+        placeholder="Enter your workspace password"
         error={errors.password?.message}
         {...register('password')}
       />
@@ -58,7 +58,7 @@ export function LoginForm() {
       <ErrorMessage message={getApiErrorMessage(error, '')} />
 
       <Button type="submit" size="lg" isLoading={isLoading} disabled={!isValid || isLoading} leftIcon={<LockKeyhole className="size-4" />}>
-        Sign in
+        Sign In
       </Button>
     </form>
   )

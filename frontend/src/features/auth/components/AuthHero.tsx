@@ -31,33 +31,33 @@ type HeroFeature = {
 
 const metrics: HeroMetric[] = [
   {
-    label: 'Async jobs',
-    value: 'RQ',
+    label: 'Validation',
+    value: 'AI',
   },
   {
-    label: 'Vision model',
-    value: 'YOLOv8',
+    label: 'Feedback',
+    value: 'QA',
   },
   {
-    label: 'GPU-ready',
-    value: 'CUDA',
+    label: 'Workflow',
+    value: 'Team',
   },
 ]
 
 const features: HeroFeature[] = [
   {
-    title: 'Real-time defect intelligence',
-    description: 'Upload inspection images, queue inference jobs, and review detections with production traceability.',
+    title: 'Validate on real factory images',
+    description: 'Upload production inspection photos and review AI defect predictions against actual QA cases.',
     icon: Radar,
   },
   {
-    title: 'Scalable worker architecture',
-    description: 'FastAPI, Redis, and RQ separate API traffic from heavy computer-vision workloads.',
+    title: 'Capture simple operator feedback',
+    description: 'Track false positives, missed defects, and uncertain predictions without complex annotation overhead.',
     icon: Workflow,
   },
   {
-    title: 'Secure enterprise workflow',
-    description: 'Authenticated sessions, protected job history, and role-ready foundations for quality teams.',
+    title: 'Build customer-specific learning loops',
+    description: 'Prepare reviewed examples and validation history for future model improvement workflows.',
     icon: LockKeyhole,
   },
 ]
@@ -79,19 +79,19 @@ const stack = [
 const pipelineSteps = [
   {
     icon: Factory,
-    label: 'Inspection image',
+    label: 'Factory image',
   },
   {
     icon: DatabaseZap,
-    label: 'Redis queue',
+    label: 'AI prediction',
   },
   {
     icon: BrainCircuit,
-    label: 'GPU inference',
+    label: 'QA review',
   },
   {
     icon: Activity,
-    label: 'Analytics',
+    label: 'Learning set',
   },
 ]
 
@@ -147,8 +147,8 @@ function PipelinePreview() {
     <div className="rounded-3xl border border-border bg-surface/70 p-4 shadow-card backdrop-blur">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase text-muted-foreground">Inference pipeline</p>
-          <p className="mt-1 text-sm font-semibold text-foreground">Asynchronous quality control</p>
+          <p className="text-xs font-semibold uppercase text-muted-foreground">Validation workflow</p>
+          <p className="mt-1 text-sm font-semibold text-foreground">From factory image to reviewed result</p>
         </div>
         <div className="grid size-9 place-items-center rounded-xl bg-primary/10 text-primary">
           <GitBranch className="size-4" aria-hidden="true" />
@@ -181,22 +181,22 @@ export function AuthHero() {
 
       <div className="relative z-10">
         <div className="flex flex-wrap gap-3">
-          <HeroBadge icon={ShieldCheck}>Defect AI Platform</HeroBadge>
+          <HeroBadge icon={ShieldCheck}>DefectAI Workspace</HeroBadge>
           <HeroBadge icon={Zap} tone="success">
-            Detection engine online
+            Inspection validation
           </HeroBadge>
         </div>
 
         <div className="mt-16 max-w-3xl">
           <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-surface/65 px-4 py-2 text-xs font-semibold uppercase text-muted-foreground shadow-card backdrop-blur">
             <Cpu className="size-4 text-primary" aria-hidden="true" />
-            AI-powered industrial defect detection
+            AI-first industrial inspection validation
           </p>
           <h1 className="max-w-3xl text-5xl font-semibold tracking-tight text-foreground xl:text-6xl">
-            Production-grade computer vision for industrial quality assurance.
+            AI Inspection Validation for Manufacturing Teams
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
-            A secure AI inspection workspace for running YOLOv8 inference, tracking asynchronous jobs, and turning detection results into operational quality signals.
+            DefectAI helps factories test AI defect detection on real production images, collect simple human feedback, and build trusted inspection workflows before scaling to production.
           </p>
         </div>
 
@@ -221,8 +221,8 @@ export function AuthHero() {
                 <Layers3 className="size-5" aria-hidden="true" />
               </div>
               <div>
-                <h2 className="text-sm font-semibold text-foreground">Technology stack</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Modern frontend, resilient API, queue-backed inference.</p>
+                <h2 className="text-sm font-semibold text-foreground">Workspace capabilities</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Projects, AI predictions, operator feedback, and review traceability.</p>
               </div>
             </div>
 
@@ -241,13 +241,13 @@ export function AuthHero() {
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl border border-border bg-surface/70 p-4 shadow-card backdrop-blur">
               <Gauge className="size-5 text-primary" aria-hidden="true" />
-              <p className="mt-3 text-sm font-semibold text-foreground">GPU-ready inference</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">Designed for accelerated model execution.</p>
+              <p className="mt-3 text-sm font-semibold text-foreground">Production readiness</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">Validate AI inspection before scaling on the line.</p>
             </div>
             <div className="rounded-2xl border border-border bg-surface/70 p-4 shadow-card backdrop-blur">
               <Network className="size-5 text-primary" aria-hidden="true" />
-              <p className="mt-3 text-sm font-semibold text-foreground">Service-ready core</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">Built for API and worker separation.</p>
+              <p className="mt-3 text-sm font-semibold text-foreground">Team workspace</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">Invite QA and engineering members when ready.</p>
             </div>
           </div>
         </div>
@@ -255,7 +255,7 @@ export function AuthHero() {
 
       <div className="pointer-events-none absolute bottom-8 right-8 hidden items-center gap-2 rounded-full border border-border bg-surface/70 px-4 py-2 text-xs font-semibold text-muted-foreground shadow-card backdrop-blur xl:flex" aria-hidden="true">
         <CheckCircle2 className="size-4 text-success" />
-        Secure sessions enabled
+        Invitation-only workspace access
       </div>
     </section>
   )

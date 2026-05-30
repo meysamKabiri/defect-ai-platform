@@ -56,10 +56,10 @@ export function AcceptInvitationPage() {
       <div className="w-full max-w-md">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <p className="text-sm font-semibold text-primary">Defect AI Platform</p>
+            <p className="text-sm font-semibold text-primary">DefectAI Platform</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight">Accept workspace invitation</h1>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Create your account credentials to join the invited workspace.
+              Create your account to join the workspace you were invited to and start reviewing AI inspection results.
             </p>
           </div>
           <ThemeToggle />

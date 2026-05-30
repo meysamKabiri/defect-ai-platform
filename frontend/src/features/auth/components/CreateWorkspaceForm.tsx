@@ -52,7 +52,7 @@ export function CreateWorkspaceForm() {
   return (
     <form className="grid gap-5" onSubmit={(event) => void onSubmit(event)} noValidate>
       <FormField
-        label="Workspace / Company"
+        label="Company / Workspace Name"
         type="text"
         autoComplete="organization"
         placeholder="ABC Manufacturing"
@@ -61,7 +61,7 @@ export function CreateWorkspaceForm() {
       />
 
       <FormField
-        label="Owner full name"
+        label="Owner Name"
         type="text"
         autoComplete="name"
         placeholder="Production owner"
@@ -70,7 +70,7 @@ export function CreateWorkspaceForm() {
       />
 
       <FormField
-        label="Owner email"
+        label="Owner Email"
         type="email"
         autoComplete="email"
         placeholder="owner@company.com"
@@ -99,7 +99,7 @@ export function CreateWorkspaceForm() {
       <ErrorMessage message={getApiErrorMessage(error, '')} />
 
       <Button type="submit" size="lg" isLoading={isLoading} disabled={!isValid || isLoading} leftIcon={<Building2 className="size-4" />}>
-        Create workspace
+        Create Workspace
       </Button>
     </form>
   )
