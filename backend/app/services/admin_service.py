@@ -151,6 +151,7 @@ class AdminService:
         *,
         search: str | None,
         owner_id: str | None,
+        workspace_id: str | None = None,
         is_active: bool | None,
         limit: int,
         offset: int,
@@ -158,12 +159,17 @@ class AdminService:
         return await self.projects.list_projects(
             search=search,
             owner_id=owner_id,
+            workspace_id=workspace_id,
             is_active=is_active,
             limit=limit,
             offset=offset,
         )
 
-    async def create_project(self, payload: ProjectCreateRequest) -> Project:
+    async def create_project(
+        self,
+        payload: ProjectCreateRequest,
+        workspace_id: str | None = None,
+    ) -> Project:
         if payload.owner_id is not None:
             await self._get_user_or_404(payload.owner_id)
 
@@ -171,6 +177,7 @@ class AdminService:
             name=payload.name,
             description=payload.description,
             owner_id=payload.owner_id,
+            workspace_id=workspace_id,
         )
         await self.session.commit()
         await self.session.refresh(project)
@@ -180,8 +187,9 @@ class AdminService:
         self,
         project_id: str,
         payload: ProjectUpdateRequest,
+        workspace_id: str | None = None,
     ) -> Project:
-        project = await self._get_project_or_404(project_id)
+        project = await self._get_project_or_404(project_id, workspace_id=workspace_id)
 
         if payload.name is not None:
             project.name = payload.name
@@ -197,8 +205,12 @@ class AdminService:
         await self.session.refresh(project)
         return project
 
-    async def delete_project(self, project_id: str) -> None:
-        project = await self._get_project_or_404(project_id)
+    async def delete_project(
+        self,
+        project_id: str,
+        workspace_id: str | None = None,
+    ) -> None:
+        project = await self._get_project_or_404(project_id, workspace_id=workspace_id)
         await self.projects.delete_project(project)
         await self.session.commit()
 
@@ -211,8 +223,12 @@ class AdminService:
             )
         return user
 
-    async def _get_project_or_404(self, project_id: str) -> Project:
-        project = await self.projects.get_project(project_id)
+    async def _get_project_or_404(
+        self,
+        project_id: str,
+        workspace_id: str | None = None,
+    ) -> Project:
+        project = await self.projects.get_project(project_id, workspace_id=workspace_id)
         if project is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

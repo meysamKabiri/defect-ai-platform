@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db_session
 from app.core.dependencies import get_current_user
 from app.core.permissions import Permission
-from app.core.permissions import can_access_job
 from app.core.permissions import has_permissions
 from app.core.permissions import has_permission
 from app.core.permissions import normalize_role
@@ -18,6 +17,7 @@ from app.core.roles import UserRole
 from app.db.models.detection import DetectionJob
 from app.db.models.user import User
 from app.repositories.project_repository import ProjectRepository
+from app.repositories.workspace_repository import WorkspaceRepository
 from app.services.detection_persistence_service import DetectionPersistenceService
 
 
@@ -103,17 +103,21 @@ def require_job_access(
                 detail="Job not found",
             )
 
-        if not can_access_job(
-            current_user,
-            job,
-            permission=permission,
-        ):
-            if job.project_id is not None:
-                project = await ProjectRepository(db).get_project(job.project_id)
-                if project is not None and project.owner_id == current_user.id:
-                    return job
+        if job.project_id is None:
+            if job.user_id == current_user.id:
+                return job
+            raise forbidden_exception("Job is not scoped to a workspace project")
 
-            raise forbidden_exception("You do not have access to this job")
+        project = await ProjectRepository(db).get_project(job.project_id)
+        if project is None or project.workspace_id is None:
+            raise forbidden_exception("Job project is not scoped to an accessible workspace")
+
+        membership = await WorkspaceRepository(db).get_active_membership(
+            workspace_id=project.workspace_id,
+            user_id=current_user.id,
+        )
+        if membership is None:
+            raise forbidden_exception("You do not have access to this job workspace")
 
         return job
 

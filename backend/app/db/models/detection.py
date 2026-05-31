@@ -12,8 +12,12 @@ from sqlalchemy import func
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
+from typing import TYPE_CHECKING
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.db.models.project import Project
 
 
 def new_uuid() -> str:
@@ -47,7 +51,10 @@ class DetectionJob(Base):
         index=True,
     )
     project_id: Mapped[str | None] = mapped_column(
-        String(36),
+        ForeignKey(
+            "projects.id",
+            ondelete="SET NULL",
+        ),
         nullable=True,
         index=True,
     )
@@ -112,10 +119,16 @@ class DetectionJob(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    feedback: Mapped[list["HumanFeedback"]] = relationship(
+        back_populates="job",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
     user: Mapped["User | None"] = relationship(
         "User",
         back_populates="detection_jobs",
     )
+    project: Mapped["Project | None"] = relationship("Project")
 
     __table_args__ = (
         Index("ix_detection_jobs_status_created_at", "status", "created_at"),
@@ -182,7 +195,74 @@ class DetectionBox(Base):
     job: Mapped[DetectionJob] = relationship(
         back_populates="detections",
     )
+    feedback: Mapped[list["HumanFeedback"]] = relationship(
+        back_populates="detection_box",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
     __table_args__ = (
         Index("ix_detection_boxes_class_confidence", "class_name", "confidence"),
+    )
+
+
+class HumanFeedback(Base):
+    __tablename__ = "human_feedback"
+
+    id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+        default=new_uuid,
+    )
+    job_id: Mapped[str] = mapped_column(
+        ForeignKey(
+            "detection_jobs.id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+        index=True,
+    )
+    detection_box_id: Mapped[str | None] = mapped_column(
+        ForeignKey(
+            "detection_boxes.id",
+            ondelete="CASCADE",
+        ),
+        nullable=True,
+        index=True,
+    )
+    reviewer_id: Mapped[str | None] = mapped_column(
+        ForeignKey(
+            "users.id",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+        index=True,
+    )
+    feedback_type: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        index=True,
+    )
+    corrected_class_name: Mapped[str | None] = mapped_column(
+        String(128),
+        nullable=True,
+    )
+    comment: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    job: Mapped[DetectionJob] = relationship(back_populates="feedback")
+    detection_box: Mapped[DetectionBox | None] = relationship(
+        back_populates="feedback",
+    )
+    reviewer: Mapped["User | None"] = relationship("User")
+
+    __table_args__ = (
+        Index("ix_human_feedback_job_type", "job_id", "feedback_type"),
     )

@@ -4,13 +4,19 @@ import type {
   DetectionJobListResponse,
   DetectionJobQuery,
   DetectionJobResponse,
+  HumanFeedbackCreateRequest,
+  HumanFeedbackListResponse,
+  HumanFeedbackResponse,
   UploadDetectionResponse,
 } from '@/features/detection/detectionTypes'
 
 export const detectionApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getAssignedProjects: builder.query<AssignedProjectListResponse, void>({
-      query: () => '/projects/my?limit=100',
+    getAssignedProjects: builder.query<AssignedProjectListResponse, string | void>({
+      query: (workspaceId) =>
+        workspaceId
+          ? `/workspaces/${workspaceId}/projects?limit=100&is_active=true`
+          : '/projects/my?limit=100',
       providesTags: ['AdminProjects'],
     }),
 
@@ -22,6 +28,10 @@ export const detectionApi = baseApi.injectEndpoints({
 
         if (filters?.projectId) {
           params.set('project_id', filters.projectId)
+        }
+
+        if (filters?.workspaceId) {
+          params.set('workspace_id', filters.workspaceId)
         }
 
         if (filters?.status) {
@@ -54,12 +64,33 @@ export const detectionApi = baseApi.injectEndpoints({
       query: (jobId) => `/detect/jobs/${jobId}`,
       providesTags: (_result, _error, jobId) => [{ type: 'Detection', id: jobId }],
     }),
+
+    getJobFeedback: builder.query<HumanFeedbackListResponse, string>({
+      query: (jobId) => `/detect/jobs/${jobId}/feedback`,
+      providesTags: (_result, _error, jobId) => [{ type: 'Detection', id: `${jobId}:feedback` }],
+    }),
+
+    createJobFeedback: builder.mutation<
+      HumanFeedbackResponse,
+      { jobId: string; payload: HumanFeedbackCreateRequest }
+    >({
+      query: ({ jobId, payload }) => ({
+        url: `/detect/jobs/${jobId}/feedback`,
+        method: 'POST',
+        body: payload,
+      }),
+      invalidatesTags: (_result, _error, { jobId }) => [
+        { type: 'Detection', id: `${jobId}:feedback` },
+      ],
+    }),
   }),
 })
 
 export const {
+  useCreateJobFeedbackMutation,
   useGetAssignedProjectsQuery,
   useGetDetectionJobQuery,
   useGetDetectionJobsQuery,
+  useGetJobFeedbackQuery,
   useUploadDetectionMutation,
 } = detectionApi

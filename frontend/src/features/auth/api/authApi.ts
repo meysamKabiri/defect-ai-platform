@@ -4,6 +4,8 @@ import type {
   ApiAuthResponse,
   AuthResponse,
   AuthUser,
+  AcceptInvitationRequest,
+  CreateWorkspaceRequest,
   CreateUserRequest,
   LoginRequest,
 } from "@/features/auth/types";
@@ -43,6 +45,44 @@ export const authApi = baseApi.injectEndpoints({
           dispatch(setCredentials(data));
         } catch {
           // The form renders the request error; no extra side effect needed here.
+        }
+      },
+      invalidatesTags: ["Auth"],
+    }),
+
+    createWorkspace: builder.mutation<AuthResponse, CreateWorkspaceRequest>({
+      query: (payload) => ({
+        url: "/workspaces",
+        method: "POST",
+        body: payload,
+      }),
+      transformResponse: (response: ApiAuthResponse) =>
+        normalizeAuthResponse(response),
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(setCredentials(data));
+        } catch {
+          // The form renders the request error.
+        }
+      },
+      invalidatesTags: ["Auth"],
+    }),
+
+    acceptInvitation: builder.mutation<AuthResponse, AcceptInvitationRequest>({
+      query: (payload) => ({
+        url: "/invitations/accept",
+        method: "POST",
+        body: payload,
+      }),
+      transformResponse: (response: ApiAuthResponse) =>
+        normalizeAuthResponse(response),
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(setCredentials(data));
+        } catch {
+          // The form renders the request error.
         }
       },
       invalidatesTags: ["Auth"],
@@ -101,7 +141,9 @@ export const authApi = baseApi.injectEndpoints({
 });
 
 export const {
+  useAcceptInvitationMutation,
   useCreateUserMutation,
+  useCreateWorkspaceMutation,
   useLoginMutation,
   useRefreshSessionMutation,
   useGetCurrentUserQuery,

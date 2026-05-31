@@ -4,7 +4,6 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 
 from app.schemas.auth import (
     LoginRequest,
-    CreateUserRequest,
     AuthResponse,
     RefreshTokenRequest,
     UserResponse,
@@ -94,21 +93,11 @@ def _clear_refresh_cookie(response: Response) -> None:
     response_model_exclude_none=True,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_user(
-    response: Response,
-    payload: CreateUserRequest,
-    db=Depends(get_db_session),
-):
-    session = await auth_service.create_initial_user(
-        db=db,
-        email=payload.email,
-        password=payload.password,
-        full_name=payload.full_name,
+async def create_user():
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Bootstrap user creation has been replaced by POST /api/v1/workspaces.",
     )
-    refresh_token = session.pop("refreshToken")
-    _set_refresh_cookie(response, refresh_token)
-
-    return session
 
 
 @router.post(

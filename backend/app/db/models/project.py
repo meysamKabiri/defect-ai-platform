@@ -11,8 +11,12 @@ from sqlalchemy import func
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
+from typing import TYPE_CHECKING
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.db.models.workspace import Workspace
 
 
 def new_uuid() -> str:
@@ -34,6 +38,11 @@ class Project(Base):
         nullable=True,
         index=True,
     )
+    workspace_id: Mapped[str | None] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -48,7 +57,9 @@ class Project(Base):
     )
 
     owner: Mapped["User | None"] = relationship("User", back_populates="projects")
+    workspace: Mapped["Workspace | None"] = relationship("Workspace")
 
     __table_args__ = (
         Index("ix_projects_owner_name", "owner_id", "name"),
+        Index("ix_projects_workspace_name", "workspace_id", "name"),
     )

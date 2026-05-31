@@ -2,16 +2,14 @@ from typing import Annotated
 
 from fastapi import APIRouter
 from fastapi import Depends
+from fastapi import HTTPException
 from fastapi import Query
 from fastapi import Response
 from fastapi import status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies.roles import require_admin
-from app.api.dependencies.roles import require_permissions
 from app.api.dependencies.roles import require_super_admin
 from app.core.database import get_db_session
-from app.core.permissions import Permission
 from app.core.roles import UserRole
 from app.db.models.user import User
 from app.schemas.admin import AdminCreateUserRequest
@@ -42,7 +40,7 @@ async def list_users(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db_session),
-    _: User = Depends(require_permissions(Permission.USER_MANAGE)),
+    _: User = Depends(require_super_admin()),
 ):
     service = AdminService(db)
     users, total = await service.list_users(
@@ -67,10 +65,12 @@ async def list_users(
 )
 async def create_user(
     payload: AdminCreateUserRequest,
-    db: AsyncSession = Depends(get_db_session),
-    actor: User = Depends(require_permissions(Permission.USER_MANAGE)),
+    _: User = Depends(require_super_admin()),
 ):
-    return await AdminService(db).create_user(actor=actor, payload=payload)
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Direct user creation is disabled. Invite users from a workspace instead.",
+    )
 
 
 @router.patch(
@@ -98,7 +98,7 @@ async def update_user_status(
     user_id: str,
     payload: UpdateUserStatusRequest,
     db: AsyncSession = Depends(get_db_session),
-    actor: User = Depends(require_admin()),
+    actor: User = Depends(require_super_admin()),
 ):
     return await AdminService(db).update_user_status(
         actor=actor,
@@ -115,7 +115,7 @@ async def delete_user(
     user_id: str,
     response: Response,
     db: AsyncSession = Depends(get_db_session),
-    actor: User = Depends(require_admin()),
+    actor: User = Depends(require_super_admin()),
 ):
     await AdminService(db).delete_user(actor=actor, user_id=user_id)
     response.status_code = status.HTTP_204_NO_CONTENT
@@ -143,7 +143,7 @@ async def list_projects(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db_session),
-    _: User = Depends(require_permissions(Permission.PROJECT_MANAGE)),
+    _: User = Depends(require_super_admin()),
 ):
     service = AdminService(db)
     projects, total = await service.list_projects(
@@ -168,10 +168,12 @@ async def list_projects(
 )
 async def create_project(
     payload: ProjectCreateRequest,
-    db: AsyncSession = Depends(get_db_session),
-    _: User = Depends(require_permissions(Permission.PROJECT_MANAGE)),
+    _: User = Depends(require_super_admin()),
 ):
-    return await AdminService(db).create_project(payload)
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Global project creation is disabled. Create projects inside a workspace instead.",
+    )
 
 
 @router.patch(
@@ -181,10 +183,12 @@ async def create_project(
 async def update_project(
     project_id: str,
     payload: ProjectUpdateRequest,
-    db: AsyncSession = Depends(get_db_session),
-    _: User = Depends(require_permissions(Permission.PROJECT_MANAGE)),
+    _: User = Depends(require_super_admin()),
 ):
-    return await AdminService(db).update_project(project_id, payload)
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Global project updates are disabled. Update projects inside a workspace instead.",
+    )
 
 
 @router.delete(
@@ -194,9 +198,9 @@ async def update_project(
 async def delete_project(
     project_id: str,
     response: Response,
-    db: AsyncSession = Depends(get_db_session),
-    _: User = Depends(require_permissions(Permission.PROJECT_MANAGE)),
+    _: User = Depends(require_super_admin()),
 ):
-    await AdminService(db).delete_project(project_id)
-    response.status_code = status.HTTP_204_NO_CONTENT
-    return None
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Global project deletion is disabled. Delete projects inside a workspace instead.",
+    )

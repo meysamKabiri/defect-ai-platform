@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     OUTPUT_DIR: str
 
     ALLOWED_ORIGINS: list[str] = []
+    FRONTEND_URL: str = "http://localhost:5173"
     MAX_UPLOAD_SIZE_MB: int = 20
     ALLOWED_IMAGE_EXTENSIONS: list[str] = [
         ".jpg",

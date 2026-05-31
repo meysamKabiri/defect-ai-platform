@@ -29,7 +29,7 @@ class UserListResponse(BaseModel):
 
 class AdminCreateUserRequest(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=12)
+    password: str = Field(min_length=6)
     full_name: str | None = None
     role: UserRole = UserRole.ENGINEER
     is_active: bool = True
@@ -48,6 +48,7 @@ class ProjectResponse(BaseModel):
     name: str
     description: str | None = None
     owner_id: str | None = None
+    workspace_id: str | None = None
     is_active: bool
     created_at: datetime
     updated_at: datetime

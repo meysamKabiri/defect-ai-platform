@@ -1,4 +1,4 @@
-import { Boxes, ImageIcon, ScanLine } from 'lucide-react'
+import { Boxes, ImageIcon } from 'lucide-react'
 import { Panel } from '@/components/common/Panel'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import type { DetectionBox } from '@/features/detection/detectionTypes'
@@ -55,7 +55,6 @@ export function ImageViewer({
           {boxes.length > 0 ? `${boxes.length} boxes` : 'No boxes'}
         </StatusBadge>
       }
-      description="Review the source or annotated output with model-generated bounding boxes."
       eyebrow="Review"
       title="Inspection canvas"
     >
@@ -111,27 +110,19 @@ export function ImageViewer({
           )}
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border border-border bg-background p-3">
-            <ScanLine className="size-4 text-primary" aria-hidden="true" />
-            <p className="mt-2 text-sm font-semibold text-foreground">
-              {isImageLoading ? 'Loading image' : imageUrl ? 'Preview ready' : 'Awaiting image'}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">Canvas state</p>
+        <details className="mt-4 rounded-xl border border-border bg-background p-3">
+          <summary className="cursor-pointer text-sm font-semibold text-foreground">
+            Canvas details
+          </summary>
+          <div className="mt-3 grid gap-3 text-xs text-muted-foreground sm:grid-cols-3">
+            <span>{isImageLoading ? 'Loading image' : imageUrl ? 'Preview ready' : 'Awaiting image'}</span>
+            <span className="inline-flex items-center gap-1">
+              <Boxes className="size-3.5 text-primary" aria-hidden="true" />
+              {boxes.length} rendered detections
+            </span>
+            <span className="truncate">{alt}</span>
           </div>
-          <div className="rounded-xl border border-border bg-background p-3">
-            <Boxes className="size-4 text-primary" aria-hidden="true" />
-            <p className="mt-2 text-sm font-semibold text-foreground">{boxes.length}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Rendered detections</p>
-          </div>
-          <div className="rounded-xl border border-border bg-background p-3">
-            <ImageIcon className="size-4 text-primary" aria-hidden="true" />
-            <p className="mt-2 truncate text-sm font-semibold text-foreground">
-              {alt}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">Current asset</p>
-          </div>
-        </div>
+        </details>
       </div>
     </Panel>
   )

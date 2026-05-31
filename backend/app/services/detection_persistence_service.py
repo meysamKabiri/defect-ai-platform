@@ -3,6 +3,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.detection import DetectionJob
+from app.db.models.detection import HumanFeedback
 from app.repositories import DetectionRepository
 
 
@@ -76,10 +77,12 @@ class DetectionPersistenceService:
         job_id: str,
         *,
         user_id: str | None = None,
+        workspace_id: str | None = None,
     ) -> DetectionJob | None:
         return await self.repository.get_job(
             job_id,
             user_id=user_id,
+            workspace_id=workspace_id,
             include_detections=True,
         )
 
@@ -93,6 +96,7 @@ class DetectionPersistenceService:
         offset: int,
         project_id: str | None = None,
         project_owner_id: str | None = None,
+        workspace_id: str | None = None,
     ) -> tuple[list[DetectionJob], int]:
         return await self.repository.list_jobs(
             status=status,
@@ -100,6 +104,7 @@ class DetectionPersistenceService:
             user_id=user_id,
             project_id=project_id,
             project_owner_id=project_owner_id,
+            workspace_id=workspace_id,
             limit=limit,
             offset=offset,
         )
@@ -109,3 +114,40 @@ class DetectionPersistenceService:
         job_id: str,
     ) -> bool:
         return await self.repository.delete_job(job_id)
+
+    async def detection_box_belongs_to_job(
+        self,
+        *,
+        detection_box_id: str,
+        job_id: str,
+    ) -> bool:
+        return await self.repository.detection_box_belongs_to_job(
+            detection_box_id=detection_box_id,
+            job_id=job_id,
+        )
+
+    async def create_feedback(
+        self,
+        *,
+        job_id: str,
+        feedback_type: str,
+        reviewer_id: str | None,
+        detection_box_id: str | None = None,
+        corrected_class_name: str | None = None,
+        comment: str | None = None,
+    ) -> HumanFeedback:
+        return await self.repository.create_feedback(
+            job_id=job_id,
+            feedback_type=feedback_type,
+            reviewer_id=reviewer_id,
+            detection_box_id=detection_box_id,
+            corrected_class_name=corrected_class_name,
+            comment=comment,
+        )
+
+    async def list_feedback(
+        self,
+        *,
+        job_id: str,
+    ) -> list[HumanFeedback]:
+        return await self.repository.list_feedback(job_id=job_id)

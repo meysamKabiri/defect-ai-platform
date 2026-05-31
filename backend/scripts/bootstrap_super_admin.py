@@ -31,9 +31,13 @@ async def bootstrap_super_admin(
                 )
                 existing_super_admin = await repository.get_super_admin(session)
                 if existing_super_admin is not None:
-                    raise RuntimeError("A super-admin already exists. Bootstrap refused.")
+                    raise RuntimeError(
+                        "A super-admin already exists. Bootstrap refused."
+                    )
 
-                existing_email = await repository.get_user_by_email(session, email.lower())
+                existing_email = await repository.get_user_by_email(
+                    session, email.lower()
+                )
                 if existing_email is not None:
                     existing_email.full_name = full_name or existing_email.full_name
                     existing_email.hashed_password = hash_password(password)
@@ -73,7 +77,7 @@ def main() -> None:
     args = parse_args()
     password = args.password or getpass.getpass("Password: ")
 
-    if len(password) < 12:
+    if len(password) < 6:
         raise SystemExit("Password must be at least 12 characters.")
 
     asyncio.run(

@@ -11,6 +11,7 @@ import { NotFoundPage } from '@/routes/pages/NotFoundPage'
 import { RootRedirect } from '@/routes/pages/RootRedirect'
 
 const AuthPage = lazy(() => import('@/features/auth/pages/AuthPage').then((module) => ({ default: module.AuthPage })))
+const AcceptInvitationPage = lazy(() => import('@/features/auth/pages/AcceptInvitationPage').then((module) => ({ default: module.AcceptInvitationPage })))
 const DashboardPage = lazy(() => import('@/features/detection/pages/DashboardPage').then((module) => ({ default: module.DashboardPage })))
 const UsersPage = lazy(() => import('@/features/admin/pages/UsersPage').then((module) => ({ default: module.UsersPage })))
 const RolesPage = lazy(() => import('@/features/admin/pages/RolesPage').then((module) => ({ default: module.RolesPage })))
@@ -44,6 +45,10 @@ export const router = createBrowserRouter([
             path: ROUTES.auth,
             element: withSuspense(<AuthPage />),
           },
+          {
+            path: ROUTES.acceptInvite,
+            element: withSuspense(<AcceptInvitationPage />),
+          },
         ],
       },
       {
@@ -57,7 +62,7 @@ export const router = createBrowserRouter([
                 element: withSuspense(<DashboardPage />),
               },
               {
-                element: <RoleGuard allowedRoles={['super_admin', 'admin']} />,
+                element: <RoleGuard allowedRoles={['OWNER', 'ADMIN']} />,
                 children: [
                   {
                     path: ROUTES.users,
@@ -70,7 +75,7 @@ export const router = createBrowserRouter([
                 ],
               },
               {
-                element: <RoleGuard allowedRoles={['super_admin']} />,
+                element: <RoleGuard allowedRoles={['OWNER']} />,
                 children: [
                   {
                     path: ROUTES.roles,

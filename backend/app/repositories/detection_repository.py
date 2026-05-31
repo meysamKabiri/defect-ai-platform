@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app.db.models.detection import DetectionBox
 from app.db.models.detection import DetectionJob
+from app.db.models.detection import HumanFeedback
 from app.db.models.project import Project
 
 
@@ -46,9 +47,15 @@ class DetectionRepository:
         job_id: str,
         *,
         user_id: str | None = None,
+        workspace_id: str | None = None,
         include_detections: bool = False,
     ) -> DetectionJob | None:
         statement = select(DetectionJob).where(DetectionJob.id == job_id)
+
+        if workspace_id is not None:
+            statement = statement.join(Project, DetectionJob.project_id == Project.id).where(
+                Project.workspace_id == workspace_id,
+            )
 
         if user_id is not None:
             statement = statement.where(DetectionJob.user_id == user_id)
@@ -67,6 +74,7 @@ class DetectionRepository:
         user_id: str | None = None,
         project_id: str | None = None,
         project_owner_id: str | None = None,
+        workspace_id: str | None = None,
         limit: int = 20,
         offset: int = 0,
     ) -> tuple[list[DetectionJob], int]:
@@ -76,6 +84,7 @@ class DetectionRepository:
             user_id=user_id,
             project_id=project_id,
             project_owner_id=project_owner_id,
+            workspace_id=workspace_id,
         )
         count_statement = select(func.count()).select_from(statement.subquery())
 
@@ -176,6 +185,54 @@ class DetectionRepository:
         await self.session.flush()
         return True
 
+    async def detection_box_belongs_to_job(
+        self,
+        *,
+        detection_box_id: str,
+        job_id: str,
+    ) -> bool:
+        statement = select(DetectionBox.id).where(
+            DetectionBox.id == detection_box_id,
+            DetectionBox.job_id == job_id,
+        )
+        result = await self.session.execute(statement)
+        return result.scalar_one_or_none() is not None
+
+    async def create_feedback(
+        self,
+        *,
+        job_id: str,
+        feedback_type: str,
+        reviewer_id: str | None,
+        detection_box_id: str | None = None,
+        corrected_class_name: str | None = None,
+        comment: str | None = None,
+    ) -> HumanFeedback:
+        feedback = HumanFeedback(
+            job_id=job_id,
+            detection_box_id=detection_box_id,
+            reviewer_id=reviewer_id,
+            feedback_type=feedback_type,
+            corrected_class_name=corrected_class_name,
+            comment=comment,
+        )
+        self.session.add(feedback)
+        await self.session.flush()
+        return feedback
+
+    async def list_feedback(
+        self,
+        *,
+        job_id: str,
+    ) -> list[HumanFeedback]:
+        statement = (
+            select(HumanFeedback)
+            .where(HumanFeedback.job_id == job_id)
+            .order_by(HumanFeedback.created_at.desc())
+        )
+        result = await self.session.execute(statement)
+        return list(result.scalars())
+
     def _job_filter_statement(
         self,
         *,
@@ -184,13 +241,14 @@ class DetectionRepository:
         user_id: str | None,
         project_id: str | None,
         project_owner_id: str | None,
+        workspace_id: str | None,
     ) -> Select[tuple[DetectionJob]]:
         statement = select(DetectionJob)
 
         if class_name is not None:
             statement = statement.join(DetectionJob.detections)
 
-        if project_owner_id is not None:
+        if project_owner_id is not None or workspace_id is not None:
             statement = statement.join(Project, DetectionJob.project_id == Project.id)
 
         if status is not None:
@@ -204,6 +262,9 @@ class DetectionRepository:
 
         if project_owner_id is not None:
             statement = statement.where(Project.owner_id == project_owner_id)
+
+        if workspace_id is not None:
+            statement = statement.where(Project.workspace_id == workspace_id)
 
         if class_name is not None:
             statement = statement.where(DetectionBox.class_name == class_name)

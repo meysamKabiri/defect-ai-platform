@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr
 
 from app.core.roles import UserRole
+from app.schemas.workspace import WorkspaceMembershipSummary
 
 
 class LoginRequest(BaseModel):
@@ -28,6 +29,8 @@ class AuthResponse(BaseModel):
     user: UserResponse
     accessToken: str
     refreshToken: str | None = None
+    workspaces: list[WorkspaceMembershipSummary] = []
+    current_workspace: WorkspaceMembershipSummary | None = None
 
 
 class RefreshTokenRequest(BaseModel):

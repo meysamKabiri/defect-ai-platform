@@ -12,7 +12,7 @@ const createUserSchema = z
   .object({
     full_name: z.string().trim().max(255, 'Name must be 255 characters or less.').optional(),
     email: z.string().trim().min(1, 'Email is required.').email('Enter a valid email address.'),
-    password: z.string().min(8, 'Password must be at least 8 characters.'),
+    password: z.string().min(6, 'Password must be at least 6 characters.'),
     confirmPassword: z.string().min(1, 'Confirm your password.'),
   })
   .refine((values) => values.password === values.confirmPassword, {

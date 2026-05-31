@@ -10,7 +10,7 @@ import { getApiErrorMessage } from '@/utils/errors'
 
 const loginSchema = z.object({
   email: z.string().trim().min(1, 'Email is required.').email('Enter a valid email address.'),
-  password: z.string().min(1, 'Password is required.').min(8, 'Password must be at least 8 characters.'),
+  password: z.string().min(1, 'Password is required.').min(6, 'Password must be at least 6 characters.'),
 })
 
 type LoginFormValues = z.infer<typeof loginSchema>
@@ -41,7 +41,7 @@ export function LoginForm() {
         label="Email"
         type="email"
         autoComplete="email"
-        placeholder="you@company.com"
+        placeholder="qa.lead@company.com"
         error={errors.email?.message}
         {...register('email')}
       />
@@ -50,7 +50,7 @@ export function LoginForm() {
         label="Password"
         type="password"
         autoComplete="current-password"
-        placeholder="Enter your password"
+        placeholder="Enter your workspace password"
         error={errors.password?.message}
         {...register('password')}
       />
@@ -58,7 +58,7 @@ export function LoginForm() {
       <ErrorMessage message={getApiErrorMessage(error, '')} />
 
       <Button type="submit" size="lg" isLoading={isLoading} disabled={!isValid || isLoading} leftIcon={<LockKeyhole className="size-4" />}>
-        Sign in
+        Sign In
       </Button>
     </form>
   )

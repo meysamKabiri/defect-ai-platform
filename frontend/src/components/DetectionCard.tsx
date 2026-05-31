@@ -2,10 +2,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   ClipboardList,
-  Crosshair,
-  Gauge,
-  Info,
-  Timer,
 } from 'lucide-react'
 import { Panel } from '@/components/common/Panel'
 import { StatusBadge } from '@/components/common/StatusBadge'
@@ -13,6 +9,8 @@ import type {
   DetectionBox,
   DetectionJobResponse,
   DetectionResult,
+  HumanFeedbackResponse,
+  HumanFeedbackType,
 } from '@/features/detection/detectionTypes'
 import { cn } from '@/lib/utils'
 
@@ -20,19 +18,32 @@ type DetectionCardProps = {
   result?: DetectionResult
   job?: DetectionJobResponse
   error?: string
+  feedbackItems?: HumanFeedbackResponse[]
   isLoading?: boolean
+  isSubmittingFeedback?: boolean
+  onSubmitFeedback?: (feedbackType: HumanFeedbackType) => void
 }
+
+const feedbackOptions: Array<{
+  label: string
+  value: HumanFeedbackType
+}> = [
+  { label: 'Correct', value: 'correct' },
+  { label: 'False Positive', value: 'false_positive' },
+  { label: 'Wrong Class', value: 'wrong_class' },
+  { label: 'Missed Defect', value: 'missed_defect' },
+  { label: 'Not Sure', value: 'not_sure' },
+  { label: 'Bad Image', value: 'bad_image' },
+]
+
+const feedbackLabelByType = Object.fromEntries(
+  feedbackOptions.map((option) => [option.value, option.label]),
+) as Record<HumanFeedbackType, string>
 
 function formatPercent(value?: number) {
   if (value === undefined) return '--'
 
   return `${(value * 100).toFixed(1)}%`
-}
-
-function formatNumber(value?: number) {
-  if (value === undefined) return '--'
-
-  return value.toFixed(2)
 }
 
 function getDetections(
@@ -96,8 +107,11 @@ function EmptyDetectionState({
 
 export function DetectionCard({
   error,
+  feedbackItems = [],
   isLoading,
+  isSubmittingFeedback,
   job,
+  onSubmitFeedback,
   result,
 }: DetectionCardProps) {
   const defects = getDetections(result, job)
@@ -109,11 +123,16 @@ export function DetectionCard({
     result?.processingTimeSeconds ??
     job?.processing_time_seconds
   const status = job?.status ?? result?.status ?? 'idle'
+  const canSubmitFeedback =
+    Boolean(job?.job_id ?? result?.jobId) &&
+    status === 'completed' &&
+    !isLoading &&
+    Boolean(onSubmitFeedback)
+  const latestFeedback = feedbackItems[0]
 
   return (
     <Panel
       action={<StatusBadge status={status}>{status}</StatusBadge>}
-      description="Scan model output, confidence scores, and persisted job metadata."
       eyebrow="Output"
       title="Detection results"
     >
@@ -124,18 +143,6 @@ export function DetectionCard({
             <span>{error}</span>
           </div>
         )}
-
-        <dl className="grid gap-3 sm:grid-cols-2">
-          <DataTile label="Job ID" value={job?.job_id ?? result?.jobId} />
-          <DataTile label="RQ worker job" value={job?.rq_job_id ?? result?.rqJobId} />
-          <DataTile label="Source image" value={job?.image_url ?? result?.imageUrl} />
-          <DataTile label="Annotated image" value={annotatedImageUrl} />
-          <DataTile
-            label="Processing time"
-            value={processingTime !== undefined ? `${processingTime}s` : undefined}
-          />
-          <DataTile label="Model" value={result?.modelVersion ?? job?.model_version ?? 'YOLOv8'} />
-        </dl>
 
         <div className="rounded-2xl border border-border bg-background">
           <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
@@ -169,7 +176,7 @@ export function DetectionCard({
               <EmptyDetectionState isLoading={isLoading} />
             </div>
           ) : (
-            <div className="max-h-[34rem] overflow-auto">
+            <div className="max-h-[26rem] overflow-auto">
               {defects.map((defect, index) => {
                 const label = defect.label ?? defect.class_name
                 const confidenceTone = getConfidenceTone(defect.confidence)
@@ -194,50 +201,9 @@ export function DetectionCard({
                       </StatusBadge>
                     </div>
 
-                    <dl className="mt-4 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-                      <div className="rounded-xl border border-border bg-surface p-3">
-                        <dt className="flex items-center gap-1.5 text-muted-foreground">
-                          <Crosshair className="size-3.5" aria-hidden="true" />
-                          X
-                        </dt>
-                        <dd className="mt-1 font-semibold text-foreground">
-                          {formatNumber(defect.x ?? defect.bbox?.x1)}
-                        </dd>
-                      </div>
-                      <div className="rounded-xl border border-border bg-surface p-3">
-                        <dt className="flex items-center gap-1.5 text-muted-foreground">
-                          <Crosshair className="size-3.5" aria-hidden="true" />
-                          Y
-                        </dt>
-                        <dd className="mt-1 font-semibold text-foreground">
-                          {formatNumber(defect.y ?? defect.bbox?.y1)}
-                        </dd>
-                      </div>
-                      <div className="rounded-xl border border-border bg-surface p-3">
-                        <dt className="flex items-center gap-1.5 text-muted-foreground">
-                          <Gauge className="size-3.5" aria-hidden="true" />
-                          W
-                        </dt>
-                        <dd className="mt-1 font-semibold text-foreground">
-                          {formatNumber(
-                            defect.width ??
-                            (defect.bbox ? defect.bbox.x2 - defect.bbox.x1 : undefined),
-                          )}
-                        </dd>
-                      </div>
-                      <div className="rounded-xl border border-border bg-surface p-3">
-                        <dt className="flex items-center gap-1.5 text-muted-foreground">
-                          <Timer className="size-3.5" aria-hidden="true" />
-                          H
-                        </dt>
-                        <dd className="mt-1 font-semibold text-foreground">
-                          {formatNumber(
-                            defect.height ??
-                            (defect.bbox ? defect.bbox.y2 - defect.bbox.y1 : undefined),
-                          )}
-                        </dd>
-                      </div>
-                    </dl>
+                    <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                      Bounding-box geometry is shown on the inspection canvas.
+                    </p>
                   </article>
                 )
               })}
@@ -245,12 +211,60 @@ export function DetectionCard({
           )}
         </div>
 
-        <div className="flex gap-3 rounded-2xl border border-border bg-background p-4 text-sm leading-6 text-muted-foreground">
-          <Info className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-          <p>
-            Confidence badges highlight high-probability detections first. Persisted job metadata is shown above for audit and debugging workflows.
-          </p>
+        <div className="rounded-2xl border border-border bg-background p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Operator feedback</h3>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Capture one-click validation signal for the current prediction.
+              </p>
+            </div>
+            {latestFeedback ? (
+              <StatusBadge tone="primary">
+                Latest: {feedbackLabelByType[latestFeedback.feedback_type]}
+              </StatusBadge>
+            ) : (
+              <StatusBadge tone="warning">Unreviewed</StatusBadge>
+            )}
+          </div>
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {feedbackOptions.map((option) => (
+              <button
+                className="min-h-10 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold text-foreground transition hover:border-primary/40 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={!canSubmitFeedback || isSubmittingFeedback}
+                key={option.value}
+                onClick={() => onSubmitFeedback?.(option.value)}
+                type="button"
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
+          {!canSubmitFeedback ? (
+            <p className="mt-3 text-xs leading-5 text-muted-foreground">
+              Feedback unlocks after a completed detection job is loaded.
+            </p>
+          ) : null}
         </div>
+
+        <details className="rounded-2xl border border-border bg-background p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-foreground">
+            Job details
+          </summary>
+          <dl className="mt-4 grid gap-3">
+            <DataTile label="Job ID" value={job?.job_id ?? result?.jobId} />
+            <DataTile label="RQ worker job" value={job?.rq_job_id ?? result?.rqJobId} />
+            <DataTile label="Source image" value={job?.image_url ?? result?.imageUrl} />
+            <DataTile label="Annotated image" value={annotatedImageUrl} />
+            <DataTile
+              label="Processing time"
+              value={processingTime !== undefined ? `${processingTime}s` : undefined}
+            />
+            <DataTile label="Model" value={result?.modelVersion ?? job?.model_version ?? 'YOLOv8'} />
+          </dl>
+        </details>
       </div>
     </Panel>
   )

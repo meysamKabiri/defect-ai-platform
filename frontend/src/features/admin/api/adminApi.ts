@@ -7,9 +7,13 @@ import type {
   CreateUserPayload,
   PaginatedResponse,
   UpdateProjectPayload,
+  WorkspaceInvitation,
+  WorkspaceMember,
 } from '@/features/admin/types'
+import type { WorkspaceRole } from '@/features/auth/types'
 
 type ListParams = {
+  workspaceId?: string
   search?: string
   role?: UserRole
   is_active?: boolean
@@ -69,37 +73,96 @@ export const adminApi = baseApi.injectEndpoints({
     }),
 
     listProjects: builder.query<PaginatedResponse<AdminProject>, ListParams | void>({
-      query: (params) => ({
-        url: '/admin/projects',
-        params: params ?? undefined,
-      }),
+      query: (params) => {
+        const { workspaceId, ...queryParams } = params ?? {}
+        return {
+          url: workspaceId ? `/workspaces/${workspaceId}/projects` : '/admin/projects',
+          params: queryParams,
+        }
+      },
       providesTags: ['AdminProjects'],
     }),
 
-    createProject: builder.mutation<AdminProject, CreateProjectPayload>({
-      query: (body) => ({
-        url: '/admin/projects',
+    createProject: builder.mutation<AdminProject, CreateProjectPayload & { workspaceId?: string }>({
+      query: ({ workspaceId, ...body }) => ({
+        url: workspaceId ? `/workspaces/${workspaceId}/projects` : '/admin/projects',
         method: 'POST',
         body,
       }),
       invalidatesTags: ['AdminProjects'],
     }),
 
-    updateProject: builder.mutation<AdminProject, { projectId: string; body: UpdateProjectPayload }>({
-      query: ({ projectId, body }) => ({
-        url: `/admin/projects/${projectId}`,
+    updateProject: builder.mutation<AdminProject, { projectId: string; workspaceId?: string; body: UpdateProjectPayload }>({
+      query: ({ projectId, workspaceId, body }) => ({
+        url: workspaceId ? `/workspaces/${workspaceId}/projects/${projectId}` : `/admin/projects/${projectId}`,
         method: 'PATCH',
         body,
       }),
       invalidatesTags: ['AdminProjects'],
     }),
 
-    deleteProject: builder.mutation<void, string>({
-      query: (projectId) => ({
-        url: `/admin/projects/${projectId}`,
+    deleteProject: builder.mutation<void, string | { projectId: string; workspaceId?: string }>({
+      query: (arg) => {
+        const projectId = typeof arg === 'string' ? arg : arg.projectId
+        const workspaceId = typeof arg === 'string' ? undefined : arg.workspaceId
+        return {
+          url: workspaceId ? `/workspaces/${workspaceId}/projects/${projectId}` : `/admin/projects/${projectId}`,
+          method: 'DELETE',
+        }
+      },
+      invalidatesTags: ['AdminProjects'],
+    }),
+
+    getWorkspaceMembers: builder.query<{ items: WorkspaceMember[] }, string>({
+      query: (workspaceId) => `/workspaces/${workspaceId}/members`,
+      providesTags: ['WorkspaceMembers'],
+    }),
+
+    inviteWorkspaceUser: builder.mutation<WorkspaceInvitation, { workspaceId: string; email: string; role: WorkspaceRole }>({
+      query: ({ workspaceId, ...body }) => ({
+        url: `/workspaces/${workspaceId}/invitations`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['WorkspaceInvitations', 'WorkspaceMembers'],
+    }),
+
+    getWorkspaceInvitations: builder.query<{ items: WorkspaceInvitation[] }, string>({
+      query: (workspaceId) => `/workspaces/${workspaceId}/invitations`,
+      providesTags: ['WorkspaceInvitations'],
+    }),
+
+    revokeInvitation: builder.mutation<WorkspaceInvitation, { workspaceId: string; invitationId: string }>({
+      query: ({ workspaceId, invitationId }) => ({
+        url: `/workspaces/${workspaceId}/invitations/${invitationId}/revoke`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['WorkspaceInvitations'],
+    }),
+
+    resendInvitation: builder.mutation<WorkspaceInvitation, { workspaceId: string; invitationId: string }>({
+      query: ({ workspaceId, invitationId }) => ({
+        url: `/workspaces/${workspaceId}/invitations/${invitationId}/resend`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['WorkspaceInvitations'],
+    }),
+
+    updateMemberRole: builder.mutation<WorkspaceMember, { workspaceId: string; userId: string; role: WorkspaceRole }>({
+      query: ({ workspaceId, userId, role }) => ({
+        url: `/workspaces/${workspaceId}/members/${userId}/role`,
+        method: 'PATCH',
+        body: { role },
+      }),
+      invalidatesTags: ['WorkspaceMembers'],
+    }),
+
+    removeMember: builder.mutation<WorkspaceMember, { workspaceId: string; userId: string }>({
+      query: ({ workspaceId, userId }) => ({
+        url: `/workspaces/${workspaceId}/members/${userId}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['AdminProjects'],
+      invalidatesTags: ['WorkspaceMembers'],
     }),
   }),
 })
@@ -109,9 +172,16 @@ export const {
   useCreateProjectMutation,
   useDeleteAdminUserMutation,
   useDeleteProjectMutation,
+  useGetWorkspaceInvitationsQuery,
+  useGetWorkspaceMembersQuery,
+  useInviteWorkspaceUserMutation,
   useListAdminUsersQuery,
   useListProjectsQuery,
   useListRolesQuery,
+  useRemoveMemberMutation,
+  useResendInvitationMutation,
+  useRevokeInvitationMutation,
+  useUpdateMemberRoleMutation,
   useUpdateProjectMutation,
   useUpdateUserRoleMutation,
   useUpdateUserStatusMutation,

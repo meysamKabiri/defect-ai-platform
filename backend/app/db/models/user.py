@@ -13,6 +13,7 @@ from app.db.base import Base
 if TYPE_CHECKING:
     from app.db.models.detection import DetectionJob
     from app.db.models.project import Project
+    from app.db.models.workspace import WorkspaceMembership
 
 
 def new_uuid() -> str:
@@ -86,5 +87,10 @@ class User(Base):
     projects: Mapped[list["Project"]] = relationship(
         "Project",
         back_populates="owner",
+        passive_deletes=True,
+    )
+    workspace_memberships: Mapped[list["WorkspaceMembership"]] = relationship(
+        "WorkspaceMembership",
+        back_populates="user",
         passive_deletes=True,
     )
