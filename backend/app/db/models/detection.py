@@ -12,8 +12,12 @@ from sqlalchemy import func
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
+from typing import TYPE_CHECKING
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.db.models.project import Project
 
 
 def new_uuid() -> str:
@@ -47,7 +51,10 @@ class DetectionJob(Base):
         index=True,
     )
     project_id: Mapped[str | None] = mapped_column(
-        String(36),
+        ForeignKey(
+            "projects.id",
+            ondelete="SET NULL",
+        ),
         nullable=True,
         index=True,
     )
@@ -121,6 +128,7 @@ class DetectionJob(Base):
         "User",
         back_populates="detection_jobs",
     )
+    project: Mapped["Project | None"] = relationship("Project")
 
     __table_args__ = (
         Index("ix_detection_jobs_status_created_at", "status", "created_at"),

@@ -62,7 +62,7 @@ export const router = createBrowserRouter([
                 element: withSuspense(<DashboardPage />),
               },
               {
-                element: <RoleGuard allowedRoles={['super_admin', 'admin']} />,
+                element: <RoleGuard allowedRoles={['OWNER', 'ADMIN']} />,
                 children: [
                   {
                     path: ROUTES.users,
@@ -75,7 +75,7 @@ export const router = createBrowserRouter([
                 ],
               },
               {
-                element: <RoleGuard allowedRoles={['super_admin']} />,
+                element: <RoleGuard allowedRoles={['OWNER']} />,
                 children: [
                   {
                     path: ROUTES.roles,

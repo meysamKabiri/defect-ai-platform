@@ -30,6 +30,10 @@ export const detectionApi = baseApi.injectEndpoints({
           params.set('project_id', filters.projectId)
         }
 
+        if (filters?.workspaceId) {
+          params.set('workspace_id', filters.workspaceId)
+        }
+
         if (filters?.status) {
           params.set('status', filters.status)
         }

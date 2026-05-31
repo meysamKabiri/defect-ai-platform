@@ -1,17 +1,17 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAppSelector } from '@/app/hooks'
-import { selectCurrentUser } from '@/features/auth/authSlice'
-import type { UserRole } from '@/features/auth/types'
+import { selectWorkspaceRole } from '@/features/auth/authSlice'
+import type { WorkspaceRole } from '@/features/auth/types'
 import { ROUTES } from '@/constants/routes'
 
 type RoleGuardProps = {
-  allowedRoles: UserRole[]
+  allowedRoles: WorkspaceRole[]
 }
 
 export function RoleGuard({ allowedRoles }: RoleGuardProps) {
-  const user = useAppSelector(selectCurrentUser)
+  const workspaceRole = useAppSelector(selectWorkspaceRole)
 
-  if (!user || !allowedRoles.includes(user.role)) {
+  if (!workspaceRole || !allowedRoles.includes(workspaceRole)) {
     return <Navigate to={ROUTES.dashboard} replace />
   }
 

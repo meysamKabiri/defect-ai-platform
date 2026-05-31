@@ -19,7 +19,6 @@ from app.api.dependencies.roles import require_permissions
 from app.core.config import settings
 from app.core.database import get_db_session
 from app.core.permissions import Permission
-from app.core.permissions import has_permission
 from app.db.models.detection import DetectionBox
 from app.db.models.detection import DetectionJob
 from app.db.models.detection import HumanFeedback
@@ -32,6 +31,7 @@ from app.schemas.detection import HumanFeedbackResponse
 from app.schemas.detection import PersistedDetectionJobResponse
 from app.services.detection_persistence_service import DetectionPersistenceService
 from app.repositories.project_repository import ProjectRepository
+from app.services.workspace_service import WorkspaceService
 from app.services.upload_service import UploadService
 
 router = APIRouter(
@@ -45,29 +45,32 @@ upload_service = UploadService()
 @router.post("/upload")
 async def upload_image(
     file: UploadFile = File(...),
-    project_id: str | None = Form(default=None),
+    project_id: str = Form(...),
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(require_permissions(Permission.JOB_CREATE)),
 ):
 
     try:
-        if project_id is not None:
-            project = await ProjectRepository(db).get_project(project_id)
-            if project is None:
-                raise HTTPException(
-                    status_code=404,
-                    detail="Project not found",
-                )
-
-            can_use_project = (
-                has_permission(current_user, Permission.PROJECT_MANAGE)
-                or project.owner_id == current_user.id
+        project = await ProjectRepository(db).get_project(project_id)
+        if project is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Project not found",
             )
-            if not can_use_project:
-                raise HTTPException(
-                    status_code=403,
-                    detail="You are not assigned to this project",
-                )
+        if project.workspace_id is None:
+            raise HTTPException(
+                status_code=403,
+                detail="Project is not scoped to a workspace",
+            )
+        if not project.is_active:
+            raise HTTPException(
+                status_code=400,
+                detail="Project is not active",
+            )
+        await WorkspaceService(db).require_membership(
+            workspace_id=project.workspace_id,
+            user=current_user,
+        )
 
         return await upload_service.upload_image(
             file=file,
@@ -176,14 +179,31 @@ async def list_detection_jobs(
     status: str | None = None,
     class_name: str | None = None,
     project_id: str | None = None,
+    workspace_id: str | None = None,
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(require_permissions(Permission.JOB_READ)),
 ):
     persistence_service = DetectionPersistenceService(db)
-    can_read_all = has_permission(current_user, Permission.JOB_READ_ALL)
-    project_owner_id = None if can_read_all else current_user.id
+    if project_id is not None:
+        project = await ProjectRepository(db).get_project(project_id)
+        if project is None:
+            raise HTTPException(status_code=404, detail="Project not found")
+        workspace_id = project.workspace_id
+
+    if workspace_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="workspace_id is required when project_id is not provided",
+        )
+
+    await WorkspaceService(db).require_membership(
+        workspace_id=workspace_id,
+        user=current_user,
+    )
+
+    project_owner_id = None
     user_id = None
     jobs, total = await persistence_service.list_jobs(
         status=status,
@@ -191,6 +211,7 @@ async def list_detection_jobs(
         user_id=user_id,
         project_id=project_id,
         project_owner_id=project_owner_id,
+        workspace_id=workspace_id,
         limit=limit,
         offset=offset,
     )
