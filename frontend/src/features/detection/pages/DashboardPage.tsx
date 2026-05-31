@@ -150,6 +150,7 @@ export function DashboardPage() {
       limit: 10,
       offset: 0,
       projectId: selectedProjectId,
+      workspaceId: currentWorkspace?.id,
     },
     {
       pollingInterval: selectedProjectId ? 5000 : 0,

@@ -12,15 +12,15 @@ import { StatusBadge } from '@/components/common/StatusBadge'
 import { ThemeToggle } from '@/components/common/ThemeToggle'
 import { ROUTES } from '@/constants/routes'
 import { useLogoutMutation } from '@/features/auth/api/authApi'
-import { selectCurrentUser } from '@/features/auth/authSlice'
-import type { UserRole } from '@/features/auth/types'
+import { selectCurrentUser, selectCurrentWorkspace } from '@/features/auth/authSlice'
+import type { WorkspaceRole } from '@/features/auth/types'
 import { cn } from '@/lib/utils'
 
 type NavItem = {
   label: string
   href: string
   icon: typeof LayoutDashboard
-  roles?: UserRole[]
+  roles?: WorkspaceRole[]
 }
 
 const navItems: NavItem[] = [
@@ -33,30 +33,31 @@ const navItems: NavItem[] = [
     label: 'Users',
     href: ROUTES.users,
     icon: Users,
-    roles: ['super_admin', 'admin'],
+    roles: ['OWNER', 'ADMIN'],
   },
   {
     label: 'Roles',
     href: ROUTES.roles,
     icon: Shield,
-    roles: ['super_admin'],
+    roles: ['OWNER'],
   },
   {
     label: 'Projects',
     href: ROUTES.projects,
     icon: FolderKanban,
-    roles: ['super_admin', 'admin'],
+    roles: ['OWNER', 'ADMIN'],
   },
 ]
 
-function canSeeItem(userRole: UserRole | undefined, item: NavItem) {
-  return !item.roles || (userRole ? item.roles.includes(userRole) : false)
+function canSeeItem(workspaceRole: WorkspaceRole | undefined, item: NavItem) {
+  return !item.roles || (workspaceRole ? item.roles.includes(workspaceRole) : false)
 }
 
 export function AppLayout() {
   const user = useAppSelector(selectCurrentUser)
+  const currentWorkspace = useAppSelector(selectCurrentWorkspace)
   const [logout, { isLoading }] = useLogoutMutation()
-  const visibleItems = navItems.filter((item) => canSeeItem(user?.role, item))
+  const visibleItems = navItems.filter((item) => canSeeItem(currentWorkspace?.role, item))
   const shouldShowAside = visibleItems.length > 1
 
   return (
@@ -122,7 +123,7 @@ export function AppLayout() {
             </div>
 
             <div className="flex items-center gap-2">
-              <StatusBadge tone="primary">{user?.role?.replace('_', ' ') ?? 'user'}</StatusBadge>
+              <StatusBadge tone="primary">{currentWorkspace?.role?.toLowerCase() ?? 'member'}</StatusBadge>
               <ThemeToggle />
               <Button
                 isLoading={isLoading}

@@ -149,6 +149,8 @@ export type DetectionJobListResponse = {
 };
 
 export type DetectionJobQuery = {
+  workspaceId?: string;
+
   projectId?: string;
 
   status?: Exclude<DetectionStatus, "idle" | "uploading"> | "";

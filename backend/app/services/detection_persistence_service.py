@@ -77,10 +77,12 @@ class DetectionPersistenceService:
         job_id: str,
         *,
         user_id: str | None = None,
+        workspace_id: str | None = None,
     ) -> DetectionJob | None:
         return await self.repository.get_job(
             job_id,
             user_id=user_id,
+            workspace_id=workspace_id,
             include_detections=True,
         )
 
@@ -94,6 +96,7 @@ class DetectionPersistenceService:
         offset: int,
         project_id: str | None = None,
         project_owner_id: str | None = None,
+        workspace_id: str | None = None,
     ) -> tuple[list[DetectionJob], int]:
         return await self.repository.list_jobs(
             status=status,
@@ -101,6 +104,7 @@ class DetectionPersistenceService:
             user_id=user_id,
             project_id=project_id,
             project_owner_id=project_owner_id,
+            workspace_id=workspace_id,
             limit=limit,
             offset=offset,
         )

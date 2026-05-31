@@ -47,9 +47,15 @@ class DetectionRepository:
         job_id: str,
         *,
         user_id: str | None = None,
+        workspace_id: str | None = None,
         include_detections: bool = False,
     ) -> DetectionJob | None:
         statement = select(DetectionJob).where(DetectionJob.id == job_id)
+
+        if workspace_id is not None:
+            statement = statement.join(Project, DetectionJob.project_id == Project.id).where(
+                Project.workspace_id == workspace_id,
+            )
 
         if user_id is not None:
             statement = statement.where(DetectionJob.user_id == user_id)
@@ -68,6 +74,7 @@ class DetectionRepository:
         user_id: str | None = None,
         project_id: str | None = None,
         project_owner_id: str | None = None,
+        workspace_id: str | None = None,
         limit: int = 20,
         offset: int = 0,
     ) -> tuple[list[DetectionJob], int]:
@@ -77,6 +84,7 @@ class DetectionRepository:
             user_id=user_id,
             project_id=project_id,
             project_owner_id=project_owner_id,
+            workspace_id=workspace_id,
         )
         count_statement = select(func.count()).select_from(statement.subquery())
 
@@ -233,13 +241,14 @@ class DetectionRepository:
         user_id: str | None,
         project_id: str | None,
         project_owner_id: str | None,
+        workspace_id: str | None,
     ) -> Select[tuple[DetectionJob]]:
         statement = select(DetectionJob)
 
         if class_name is not None:
             statement = statement.join(DetectionJob.detections)
 
-        if project_owner_id is not None:
+        if project_owner_id is not None or workspace_id is not None:
             statement = statement.join(Project, DetectionJob.project_id == Project.id)
 
         if status is not None:
@@ -253,6 +262,9 @@ class DetectionRepository:
 
         if project_owner_id is not None:
             statement = statement.where(Project.owner_id == project_owner_id)
+
+        if workspace_id is not None:
+            statement = statement.where(Project.workspace_id == workspace_id)
 
         if class_name is not None:
             statement = statement.where(DetectionBox.class_name == class_name)
