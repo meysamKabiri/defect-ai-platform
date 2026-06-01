@@ -113,7 +113,7 @@ function KpiTile({
   value: string | number
 }) {
   return (
-    <article className="rounded-2xl border border-border bg-surface p-4">
+    <article className="min-w-0 rounded-2xl border border-border bg-surface p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p>
@@ -145,6 +145,7 @@ export function DashboardPage() {
   const [jobId, setJobId] = useState<string | null>(null)
   const [selectedBatchId, setSelectedBatchId] = useState<string | undefined>()
   const [jobErrorMessage, setJobErrorMessage] = useState<string>()
+  const [feedbackSavedMessage, setFeedbackSavedMessage] = useState<string>()
   const [selectedProjectId, setSelectedProjectId] = useState('')
   const { data: assignedProjects } = useGetAssignedProjectsQuery(currentWorkspace?.id)
   const selectedProject = assignedProjects?.items.find(
@@ -277,6 +278,7 @@ export function DashboardPage() {
     setJobId(null)
     setSelectedBatchId(undefined)
     setJobErrorMessage(undefined)
+    setFeedbackSavedMessage(undefined)
     resetUploadDetection()
     dispatch(resetUploadProgress())
     replacePreviewUrl(null)
@@ -322,6 +324,7 @@ export function DashboardPage() {
 
     try {
       setJobErrorMessage(undefined)
+      setFeedbackSavedMessage(undefined)
       const response = await uploadDetection({
         file,
         projectId: selectedProjectId || undefined,
@@ -336,6 +339,7 @@ export function DashboardPage() {
     setFile(null)
     setJobId(null)
     setJobErrorMessage(undefined)
+    setFeedbackSavedMessage(undefined)
     resetUploadDetection()
     replacePreviewUrl(null)
     dispatch(resetUploadProgress())
@@ -350,12 +354,15 @@ export function DashboardPage() {
 
     try {
       setJobErrorMessage(undefined)
+      setFeedbackSavedMessage(undefined)
       await createJobFeedback({
         jobId: currentJob.job_id,
+        batchId: currentJob.batch_id,
         payload: {
           feedback_type: feedbackType,
         },
       }).unwrap()
+      setFeedbackSavedMessage(`Saved as ${feedbackLabels[feedbackType]}.`)
     } catch (requestError) {
       setJobErrorMessage(
         getErrorMessage(requestError) ?? 'Unable to save operator feedback.',
@@ -366,8 +373,8 @@ export function DashboardPage() {
   return (
     <main className="bg-background text-foreground">
       <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-5">
-        <section className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-          <div className="max-w-2xl">
+        <section className="flex min-w-0 flex-col justify-between gap-4 lg:flex-row lg:items-end">
+          <div className="min-w-0 max-w-2xl">
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-xs font-semibold uppercase text-muted-foreground">
                 Validation console
@@ -384,7 +391,7 @@ export function DashboardPage() {
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[34rem]">
+          <div className="grid min-w-0 gap-3 sm:grid-cols-3 lg:min-w-[34rem]">
             <KpiTile
               description="Pipeline state"
               icon={Activity}
@@ -406,13 +413,13 @@ export function DashboardPage() {
           </div>
         </section>
 
-        <section className="grid items-start gap-5 xl:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)]">
-          <aside className="grid min-w-0 gap-5 xl:sticky xl:top-24">
+        <section className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[360px_minmax(0,1fr)_380px]">
+          <aside className="grid min-w-0 gap-5">
             <Panel
               eyebrow="Scope"
               title="Project"
             >
-              <div className="grid gap-3 p-5">
+              <div className="grid min-w-0 gap-3 p-5">
                 <select
                   className="h-11 rounded-xl border border-border bg-surface px-3 text-sm text-foreground outline-none transition focus:ring-2 focus:ring-ring"
                   onChange={(event) => {
@@ -428,8 +435,8 @@ export function DashboardPage() {
                     </option>
                   ))}
                 </select>
-                <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                  <span>{assignedProjects?.total ?? 0} active workspace projects</span>
+                <div className="flex min-w-0 items-center justify-between gap-3 text-xs text-muted-foreground">
+                  <span className="min-w-0 truncate">{assignedProjects?.total ?? 0} active workspace projects</span>
                   {selectedProjectId ? (
                     <StatusBadge tone="success">Project scoped</StatusBadge>
                   ) : (
@@ -437,11 +444,11 @@ export function DashboardPage() {
                   )}
                 </div>
                 {selectedProject?.description ? (
-                  <details className="rounded-xl border border-border bg-background p-3 text-xs leading-5 text-muted-foreground">
+                  <details className="min-w-0 rounded-xl border border-border bg-background p-3 text-xs leading-5 text-muted-foreground">
                     <summary className="cursor-pointer font-semibold text-foreground">
                       Project notes
                     </summary>
-                    <p className="mt-2">{selectedProject.description}</p>
+                    <p className="mt-2 break-words">{selectedProject.description}</p>
                   </details>
                 ) : null}
               </div>
@@ -487,7 +494,7 @@ export function DashboardPage() {
               selectedBatchId={selectedBatch?.id}
             />
 
-            <details className="rounded-2xl border border-border bg-surface shadow-card">
+            <details className="min-w-0 rounded-2xl border border-border bg-surface shadow-card">
               <summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-foreground">
                 Recent inspections
               </summary>
@@ -509,7 +516,7 @@ export function DashboardPage() {
                     />
                   </button>
                 </div>
-                <div className="grid max-h-80 gap-3 overflow-auto p-5 pt-0">
+                <div className="grid max-h-80 min-h-0 min-w-0 gap-3 overflow-auto p-5 pt-0">
                   {!selectedProjectId ? (
                     <div className="rounded-2xl border border-border bg-background p-4 text-sm leading-6 text-muted-foreground">
                       Select a project to load its queue.
@@ -517,9 +524,17 @@ export function DashboardPage() {
                   ) : projectJobs?.items.length ? (
                     projectJobs.items.map((job) => (
                       <button
-                        className="grid gap-3 rounded-2xl border border-border bg-background p-4 text-left transition hover:border-primary/40 hover:bg-primary/5"
+                        className="grid min-w-0 gap-3 rounded-2xl border border-border bg-background p-4 text-left transition hover:border-primary/40 hover:bg-primary/5"
                         key={job.job_id}
-                        onClick={() => job.job_id && setJobId(job.job_id)}
+                        onClick={() => {
+                          if (job.job_id) {
+                            setJobId(job.job_id)
+                            setFeedbackSavedMessage(undefined)
+                          }
+                          if (job.batch_id) {
+                            setSelectedBatchId(job.batch_id)
+                          }
+                        }}
                         type="button"
                       >
                         <div className="min-w-0">
@@ -552,7 +567,7 @@ export function DashboardPage() {
             </details>
           </aside>
 
-          <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,24rem)]">
+          <div className="grid min-w-0 gap-5">
             <Suspense fallback={<DashboardSkeleton label="Loading inspection canvas" />}>
               <ImageViewer
                 alt={file?.name ?? 'Inspection preview'}
@@ -561,6 +576,14 @@ export function DashboardPage() {
               />
             </Suspense>
 
+            <BatchReportPanel
+              batch={selectedBatch}
+              projectId={selectedProjectId}
+              workspaceId={currentWorkspace?.id}
+            />
+          </div>
+
+          <aside className="grid min-w-0 gap-5">
             <DetectionCard
               canSubmitFeedback={canUploadAndReview}
               error={errorMessage}
@@ -570,20 +593,14 @@ export function DashboardPage() {
                   : 'Your workspace role can view feedback, but cannot submit it.'
               }
               feedbackItems={feedbackItems}
+              feedbackSavedMessage={feedbackSavedMessage}
               isLoading={isUploading || isAnalyzing}
               isSubmittingFeedback={isSubmittingFeedback}
               job={currentJob}
               onSubmitFeedback={handleSubmitFeedback}
               result={result}
             />
-
-            <div className="xl:col-start-2">
-              <BatchReportPanel
-                batch={selectedBatch}
-                workspaceId={currentWorkspace?.id}
-              />
-            </div>
-          </div>
+          </aside>
         </section>
       </div>
     </main>

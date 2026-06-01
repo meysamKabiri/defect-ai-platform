@@ -116,15 +116,23 @@ export function BatchReportPage() {
           <ArrowLeft className="size-4" aria-hidden="true" />
           Batch
         </Link>
-        <Button
-          isLoading={csvState.isFetching}
-          leftIcon={<Download className="size-4" aria-hidden="true" />}
-          onClick={() => void handleDownloadCsv()}
-          size="sm"
-          variant="secondary"
-        >
-          Export CSV
-        </Button>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Link
+            className="inline-flex h-9 items-center justify-center rounded-lg border border-border bg-surface px-3 text-sm font-semibold text-foreground transition hover:bg-muted"
+            to={projectId && batchId ? `/projects/${projectId}/batches/${batchId}` : '/projects'}
+          >
+            Review images
+          </Link>
+          <Button
+            isLoading={csvState.isFetching}
+            leftIcon={<Download className="size-4" aria-hidden="true" />}
+            onClick={() => void handleDownloadCsv()}
+            size="sm"
+            variant="secondary"
+          >
+            Export CSV
+          </Button>
+        </div>
       </div>
 
       <section className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">

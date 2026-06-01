@@ -1,5 +1,6 @@
 import { baseApi, normalizeAuthResponse } from "@/services/baseApi";
 import { logout, setCredentials, setUser } from "@/features/auth/authSlice";
+import { tokenStorage } from "@/features/auth/tokenStorage";
 import type {
   ApiAuthResponse,
   AuthResponse,
@@ -89,10 +90,15 @@ export const authApi = baseApi.injectEndpoints({
     }),
 
     refreshSession: builder.mutation<AuthResponse, void>({
-      query: () => ({
-        url: "/auth/refresh",
-        method: "POST",
-      }),
+      query: () => {
+        const refreshToken = tokenStorage.getRefreshToken()
+
+        return {
+          url: "/auth/refresh",
+          method: "POST",
+          body: refreshToken ? { refreshToken } : undefined,
+        }
+      },
 
       transformResponse: (response: ApiAuthResponse) =>
         normalizeAuthResponse(response),

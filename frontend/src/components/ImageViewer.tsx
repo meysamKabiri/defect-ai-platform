@@ -50,6 +50,7 @@ export function ImageViewer({
 
   return (
     <Panel
+      className="min-w-0 overflow-hidden"
       action={
         <StatusBadge tone={boxes.length > 0 ? 'warning' : 'default'}>
           {boxes.length > 0 ? `${boxes.length} boxes` : 'No boxes'}
@@ -58,15 +59,15 @@ export function ImageViewer({
       eyebrow="Review"
       title="Inspection canvas"
     >
-      <div className="p-5">
-        <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-border bg-muted">
+      <div className="min-w-0 p-5">
+        <div className="relative aspect-[4/3] max-h-[70vh] w-full overflow-hidden rounded-2xl border border-border bg-muted">
           <div className="absolute inset-0 bg-[linear-gradient(45deg,hsl(var(--border)/0.4)_25%,transparent_25%),linear-gradient(-45deg,hsl(var(--border)/0.4)_25%,transparent_25%),linear-gradient(45deg,transparent_75%,hsl(var(--border)/0.4)_75%),linear-gradient(-45deg,transparent_75%,hsl(var(--border)/0.4)_75%)] bg-[length:24px_24px] bg-[position:0_0,0_12px,12px_-12px,-12px_0]" aria-hidden="true" />
 
           {displayUrl ? (
             <>
               <img
                 alt={alt}
-                className="relative z-10 h-full w-full object-contain"
+                className="absolute inset-0 z-10 h-full w-full object-contain"
                 src={displayUrl}
               />
               <div className="pointer-events-none absolute inset-0 z-20">
@@ -110,7 +111,7 @@ export function ImageViewer({
           )}
         </div>
 
-        <details className="mt-4 rounded-xl border border-border bg-background p-3">
+        <details className="mt-4 min-w-0 rounded-xl border border-border bg-background p-3">
           <summary className="cursor-pointer text-sm font-semibold text-foreground">
             Canvas details
           </summary>

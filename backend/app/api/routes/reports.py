@@ -1,4 +1,5 @@
 import csv
+from collections import Counter
 from io import StringIO
 
 from fastapi import APIRouter
@@ -96,7 +97,7 @@ async def list_project_batch_feedback(
     )
     _ensure_batch_project(batch=batch, project_id=project_id)
     feedback_items = await service.list_batch_feedback(batch_id=batch.id)
-    return {"items": [_serialize_batch_feedback(item) for item in feedback_items]}
+    return {"items": [_serialize_batch_feedback(item) for item in _latest_feedback_items(feedback_items)]}
 
 
 @router.get("/workspaces/{workspace_id}/reports/batches/{batch_id}.csv")
@@ -185,7 +186,8 @@ async def _build_summary(
     counts = await service.batch_status_counts(batch_id=batch.id)
     total_detections, average_confidence = await service.batch_detection_totals(batch_id=batch.id)
     class_counts = await service.batch_class_counts(batch_id=batch.id)
-    feedback_counts = await service.batch_feedback_counts(batch_id=batch.id)
+    feedback_items = await service.list_batch_feedback(batch_id=batch.id)
+    latest_feedback_items = _latest_feedback_items(feedback_items)
     reviewed_jobs = await service.batch_reviewed_jobs_count(batch_id=batch.id)
 
     queued = counts.get("queued", 0)
@@ -194,7 +196,7 @@ async def _build_summary(
     failed = counts.get("failed", 0)
     total_images = batch.total_jobs or sum(counts.values())
     terminal = completed + failed
-    feedback_count_map = dict(feedback_counts)
+    feedback_count_map = Counter(item.feedback_type for item in latest_feedback_items)
     correct_count = feedback_count_map.get("correct", 0)
     false_positive_count = feedback_count_map.get("false_positive", 0)
     wrong_class_count = feedback_count_map.get("wrong_class", 0)
@@ -225,7 +227,7 @@ async def _build_summary(
     ]
     serialized_feedback_counts = [
         {"feedback_type": feedback_type, "count": count}
-        for feedback_type, count in feedback_counts
+        for feedback_type, count in feedback_count_map.most_common()
     ]
 
     return BatchReportSummaryResponse(
@@ -303,7 +305,7 @@ async def _build_csv(
     )
 
     for job in sorted(batch.jobs, key=lambda item: item.created_at):
-        feedback_items = sorted(job.feedback, key=lambda item: item.created_at)
+        feedback_items = _latest_feedback_items(job.feedback)
         job_level_feedback = [item for item in feedback_items if item.detection_box_id is None]
         feedback_by_detection: dict[str, list[HumanFeedback]] = {}
         for item in feedback_items:
@@ -341,6 +343,23 @@ async def _build_csv(
             )
 
     return output.getvalue()
+
+
+def _latest_feedback_items(feedback_items: list[HumanFeedback]) -> list[HumanFeedback]:
+    latest_by_target: dict[tuple[str, str | None], HumanFeedback] = {}
+    for item in sorted(
+        feedback_items,
+        key=lambda feedback: feedback.created_at,
+        reverse=True,
+    ):
+        target = (item.job_id, item.detection_box_id)
+        if target not in latest_by_target:
+            latest_by_target[target] = item
+    return sorted(
+        latest_by_target.values(),
+        key=lambda feedback: feedback.created_at,
+        reverse=True,
+    )
 
 
 def _write_job_row(

@@ -22,13 +22,13 @@ export function Panel({
   return (
     <Component
       className={cn(
-        'rounded-2xl border border-border bg-surface shadow-card transition-colors',
+        'min-w-0 rounded-2xl border border-border bg-surface shadow-card transition-colors',
         className,
       )}
       {...props}
     >
       {(title || eyebrow || description || action) && (
-        <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+        <div className="flex min-w-0 items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div className="min-w-0">
             {eyebrow && (
               <p className="text-xs font-semibold uppercase text-muted-foreground">

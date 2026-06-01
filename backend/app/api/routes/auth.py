@@ -126,7 +126,7 @@ async def login(
         raise
 
     _clear_failed_logins(rate_limit_key)
-    refresh_token = session.pop("refreshToken")
+    refresh_token = session["refreshToken"]
     _set_refresh_cookie(response, refresh_token)
 
     return session
@@ -158,7 +158,7 @@ async def refresh(
         db=db,
         refresh_token=refresh_token,
     )
-    new_refresh_token = session.pop("refreshToken")
+    new_refresh_token = session["refreshToken"]
     _set_refresh_cookie(response, new_refresh_token)
 
     return session

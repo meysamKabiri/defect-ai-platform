@@ -22,6 +22,7 @@ export function BatchListPanel({
 }: BatchListPanelProps) {
   return (
     <Panel
+      className="min-h-0 min-w-0"
       action={(
         <Button
           aria-label="Refresh batches"
@@ -37,14 +38,14 @@ export function BatchListPanel({
       eyebrow="Runs"
       title="Recent batches"
     >
-      <div className="grid max-h-80 gap-3 overflow-auto p-5">
+      <div className="grid max-h-80 min-h-0 min-w-0 gap-3 overflow-auto p-5">
         {batches.length ? (
           batches.map((batch) => {
             const progress = Math.round((batch.progress?.completion_rate ?? 0) * 100)
 
             return (
               <button
-                className="grid gap-3 rounded-2xl border border-border bg-background p-4 text-left transition hover:border-primary/40 hover:bg-primary/5 data-[selected=true]:border-primary/50 data-[selected=true]:bg-primary/10"
+                className="grid min-w-0 gap-3 rounded-2xl border border-border bg-background p-4 text-left transition hover:border-primary/40 hover:bg-primary/5 data-[selected=true]:border-primary/50 data-[selected=true]:bg-primary/10"
                 data-selected={selectedBatchId === batch.id}
                 key={batch.id}
                 onClick={() => onSelect(batch.id)}
@@ -62,7 +63,7 @@ export function BatchListPanel({
                   <StatusBadge status={batch.status}>{batch.status}</StatusBadge>
                 </div>
                 <ProgressBar value={progress} />
-                <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                <div className="flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                   <span>{batch.progress?.completed ?? 0} complete</span>
                   <span>{batch.progress?.failed ?? 0} failed</span>
                   <span>{batch.created_at ? new Date(batch.created_at).toLocaleString() : 'Queued'}</span>

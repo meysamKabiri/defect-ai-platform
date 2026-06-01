@@ -16,7 +16,8 @@ export const tokenStorage = {
   },
 
   getRefreshToken() {
-    return null
+    if (!canUseStorage()) return null
+    return window.localStorage.getItem(REFRESH_TOKEN_KEY)
   },
 
   getUser(): AuthUser | null {
@@ -48,8 +49,18 @@ export const tokenStorage = {
   setSession(_tokens: unknown, user?: AuthUser | null, currentWorkspace?: WorkspaceSummary | null) {
     if (!canUseStorage()) return
 
+    const tokens = _tokens as { accessToken?: string | null; refreshToken?: string | null } | null
+
     window.localStorage.removeItem(ACCESS_TOKEN_KEY)
     window.localStorage.removeItem(REFRESH_TOKEN_KEY)
+
+    if (tokens?.accessToken) {
+      window.localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken)
+    }
+
+    if (tokens?.refreshToken) {
+      window.localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken)
+    }
 
     if (user) {
       window.localStorage.setItem(USER_KEY, JSON.stringify(user))

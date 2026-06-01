@@ -59,8 +59,8 @@ export function BatchUploadPanel({
   }
 
   return (
-    <Panel eyebrow="Batch" title="Validation run">
-      <div className="grid gap-3 p-5">
+    <Panel className="min-w-0" eyebrow="Batch" title="Validation run">
+      <div className="grid min-w-0 gap-3 p-5">
         <input
           className="h-10 rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
           onChange={(event) => setName(event.target.value)}
@@ -73,12 +73,12 @@ export function BatchUploadPanel({
           placeholder="Optional batch description"
           value={description}
         />
-        <label className="grid cursor-pointer gap-2 rounded-2xl border border-dashed border-border bg-background p-4 text-sm text-muted-foreground transition hover:border-primary/50 hover:bg-primary/5 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60">
+        <label className="grid min-w-0 cursor-pointer gap-2 rounded-2xl border border-dashed border-border bg-background p-4 text-sm text-muted-foreground transition hover:border-primary/50 hover:bg-primary/5 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60">
           <span className="inline-flex items-center gap-2 font-semibold text-foreground">
             <UploadCloud className="size-4" aria-hidden="true" />
             Select inspection images
           </span>
-          <span>{disabledReason ?? (files.length ? `${files.length} images selected` : 'JPG or PNG, uploaded as one validation batch.')}</span>
+          <span className="min-w-0 break-words">{disabledReason ?? (files.length ? `${files.length} images selected` : 'JPG or PNG, uploaded as one validation batch.')}</span>
           <input
             accept="image/jpeg,image/png"
             className="sr-only"

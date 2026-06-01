@@ -216,17 +216,27 @@ export const detectionApi = baseApi.injectEndpoints({
 
     createJobFeedback: builder.mutation<
       HumanFeedbackResponse,
-      { jobId: string; payload: HumanFeedbackCreateRequest }
+      { jobId: string; payload: HumanFeedbackCreateRequest; batchId?: string | null }
     >({
       query: ({ jobId, payload }) => ({
         url: `/detect/jobs/${jobId}/feedback`,
         method: 'POST',
         body: payload,
       }),
-      invalidatesTags: (_result, _error, { jobId }) => [
+      invalidatesTags: (_result, _error, { jobId, batchId }) => [
         { type: 'Detection', id: `${jobId}:feedback` },
         { type: 'Feedback', id: jobId },
         { type: 'Job', id: jobId },
+        ...(batchId
+          ? [
+            { type: 'Feedback' as const, id: batchId },
+            { type: 'Batches' as const, id: `${batchId}:feedback` },
+            { type: 'Batch' as const, id: batchId },
+            { type: 'Report' as const, id: batchId },
+            { type: 'Reports' as const, id: batchId },
+            { type: 'Reports' as const, id: `${batchId}:csv` },
+          ]
+          : []),
         'Batches',
         'Reports',
         'Report',

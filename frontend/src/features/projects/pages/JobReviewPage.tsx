@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, HelpCircle, ImageOff, SearchX, XCircle } from 'lucide-react'
 import { useAppSelector } from '@/app/hooks'
@@ -9,6 +9,7 @@ import { useGetProjectQuery } from '@/features/admin/api/adminApi'
 import { selectCurrentWorkspace } from '@/features/auth/authSlice'
 import type { DetectionBox, HumanFeedbackType } from '@/features/detection/detectionTypes'
 import { getImageUrl } from '@/lib/image'
+import { cn } from '@/lib/utils'
 import {
   useCreateJobFeedbackMutation,
   useGetBatchQuery,
@@ -48,6 +49,7 @@ export function JobReviewPage() {
   const { batchId, jobId, projectId } = useParams()
   const currentWorkspace = useAppSelector(selectCurrentWorkspace)
   const [comment, setComment] = useState('')
+  const [isCommentDirty, setIsCommentDirty] = useState(false)
   const [wrongClassBox, setWrongClassBox] = useState<DetectionBox>()
   const [correctedClassName, setCorrectedClassName] = useState('')
   const [message, setMessage] = useState<string>()
@@ -84,7 +86,31 @@ export function JobReviewPage() {
 
   const detections = job?.detections ?? job?.result?.detections ?? []
   const imageUrl = getImageUrl(job?.annotated_image_url ?? job?.image_url)
-  const feedbackItems = feedbackData?.items ?? []
+  const feedbackItems = useMemo(() => feedbackData?.items ?? [], [feedbackData?.items])
+  const wholeImageFeedback = useMemo(
+    () => feedbackItems.find((item) => !item.detection_box_id),
+    [feedbackItems],
+  )
+  const feedbackByDetectionId = useMemo(() => {
+    const feedbackMap = new Map<string, (typeof feedbackItems)[number]>()
+    for (const item of feedbackItems) {
+      if (item.detection_box_id && !feedbackMap.has(item.detection_box_id)) {
+        feedbackMap.set(item.detection_box_id, item)
+      }
+    }
+    return feedbackMap
+  }, [feedbackItems])
+
+  const currentComment = isCommentDirty ? comment : wholeImageFeedback?.comment ?? ''
+  const feedbackComment = (
+    detectionBoxId?: string,
+  ) => {
+    const nextComment = detectionBoxId && !isCommentDirty
+      ? ''
+      : currentComment.trim()
+
+    return nextComment || undefined
+  }
 
   const submitFeedback = async (
     feedbackType: HumanFeedbackType,
@@ -97,17 +123,19 @@ export function JobReviewPage() {
       setMessage(undefined)
       await createJobFeedback({
         jobId,
+        batchId,
         payload: {
           feedback_type: feedbackType,
           detection_box_id: detectionBoxId,
           corrected_class_name: correctedClass || undefined,
-          comment: comment.trim() || undefined,
+          comment: feedbackComment(detectionBoxId),
         },
       }).unwrap()
       setComment('')
+      setIsCommentDirty(false)
       setWrongClassBox(undefined)
       setCorrectedClassName('')
-      setMessage('Feedback saved.')
+      setMessage(`Feedback saved as ${feedbackLabels[feedbackType]}.`)
     } catch {
       setMessage('Unable to save feedback.')
     }
@@ -172,10 +200,18 @@ export function JobReviewPage() {
             <textarea
               className="min-h-24 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
               disabled={!canSubmitFeedback}
-              onChange={(event) => setComment(event.target.value)}
+              onChange={(event) => {
+                setComment(event.target.value)
+                setIsCommentDirty(true)
+              }}
               placeholder="Optional comment for whole-image or prediction feedback"
-              value={comment}
+              value={currentComment}
             />
+            {wholeImageFeedback ? (
+              <div className="rounded-xl border border-success/30 bg-success/10 px-3 py-2 text-sm font-medium text-success">
+                Saved whole-image feedback: {feedbackLabels[wholeImageFeedback.feedback_type]}
+              </div>
+            ) : null}
 
             <div>
               <p className="text-xs font-semibold uppercase text-muted-foreground">
@@ -252,7 +288,12 @@ export function JobReviewPage() {
               Each prediction row supports Correct, False Positive, or Wrong Class. Wrong Class asks for the corrected class name.
             </div>
             {detections.length ? (
-              detections.map((detection) => (
+              detections.map((detection) => {
+                const savedFeedback = detection.id
+                  ? feedbackByDetectionId.get(detection.id)
+                  : undefined
+
+                return (
                 <article
                   className="grid gap-3 rounded-2xl border border-border bg-background p-4"
                   key={detection.id}
@@ -266,7 +307,14 @@ export function JobReviewPage() {
                         Confidence {formatPercent(detection.confidence)}
                       </p>
                     </div>
-                    <StatusBadge tone="primary">{formatPercent(detection.confidence)}</StatusBadge>
+                    <div className="flex flex-wrap justify-end gap-2">
+                      {savedFeedback ? (
+                        <StatusBadge tone="success">
+                          Saved: {feedbackLabels[savedFeedback.feedback_type]}
+                        </StatusBadge>
+                      ) : null}
+                      <StatusBadge tone="primary">{formatPercent(detection.confidence)}</StatusBadge>
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -275,7 +323,7 @@ export function JobReviewPage() {
                       leftIcon={<CheckCircle2 className="size-4" aria-hidden="true" />}
                       onClick={() => void submitFeedback('correct', detection.id)}
                       size="sm"
-                      variant="secondary"
+                      variant={savedFeedback?.feedback_type === 'correct' ? 'primary' : 'secondary'}
                     >
                       Correct
                     </Button>
@@ -285,13 +333,19 @@ export function JobReviewPage() {
                       leftIcon={<XCircle className="size-4" aria-hidden="true" />}
                       onClick={() => void submitFeedback('false_positive', detection.id)}
                       size="sm"
-                      variant="secondary"
+                      variant={savedFeedback?.feedback_type === 'false_positive' ? 'primary' : 'secondary'}
                     >
                       False positive
                     </Button>
                     <Button
+                      className={cn(
+                        savedFeedback?.feedback_type === 'wrong_class' && 'border-primary/60 bg-primary/10 text-primary',
+                      )}
                       disabled={!canSubmitFeedback || !detection.id}
-                      onClick={() => setWrongClassBox(detection)}
+                      onClick={() => {
+                        setWrongClassBox(detection)
+                        setCorrectedClassName(savedFeedback?.corrected_class_name ?? '')
+                      }}
                       size="sm"
                       variant="secondary"
                     >
@@ -299,7 +353,8 @@ export function JobReviewPage() {
                     </Button>
                   </div>
                 </article>
-              ))
+                )
+              })
             ) : (
               <div className="rounded-2xl border border-border bg-background p-6 text-sm leading-6 text-muted-foreground">
                 No detection rows are available for this image yet.

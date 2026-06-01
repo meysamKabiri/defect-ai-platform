@@ -69,7 +69,7 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold capitalize',
+        'inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold capitalize',
         toneClasses[resolvedTone],
         className,
       )}
@@ -81,7 +81,7 @@ export function StatusBadge({
         )}
         aria-hidden="true"
       />
-      {children ?? status ?? 'idle'}
+      <span className="truncate">{children ?? status ?? 'idle'}</span>
     </span>
   )
 }

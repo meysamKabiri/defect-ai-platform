@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { Download, FileBarChart } from 'lucide-react'
 import { Button } from '@/components/common/Button'
 import { Panel } from '@/components/common/Panel'
@@ -11,19 +12,23 @@ import {
 
 type BatchReportPanelProps = {
   workspaceId?: string
+  projectId?: string
   batch?: InspectionBatch
 }
 
 export function BatchReportPanel({
   workspaceId,
+  projectId,
   batch,
 }: BatchReportPanelProps) {
+  const resolvedProjectId = projectId ?? batch?.project_id ?? undefined
   const {
     currentData: summary,
     isFetching,
   } = useGetBatchReportSummaryQuery(
     {
       workspaceId,
+      projectId: resolvedProjectId,
       batchId: batch?.id,
     },
     {
@@ -34,7 +39,11 @@ export function BatchReportPanel({
 
   const handleDownloadCsv = async () => {
     if (!workspaceId || !batch?.id) return
-    const csv = await getCsv({ workspaceId, batchId: batch.id }).unwrap()
+    const csv = await getCsv({
+      workspaceId,
+      projectId: resolvedProjectId,
+      batchId: batch.id,
+    }).unwrap()
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -48,22 +57,41 @@ export function BatchReportPanel({
 
   return (
     <Panel
+      className="min-w-0"
       action={(
-        <Button
-          disabled={!workspaceId || !batch?.id}
-          isLoading={isDownloading}
-          leftIcon={<Download className="size-4" aria-hidden="true" />}
-          onClick={() => void handleDownloadCsv()}
-          size="sm"
-          variant="secondary"
-        >
-          CSV
-        </Button>
+        <div className="flex min-w-0 flex-wrap justify-end gap-2">
+          {resolvedProjectId && batch?.id ? (
+            <>
+              <Link
+                className="inline-flex h-9 items-center justify-center rounded-lg border border-border bg-surface px-3 text-sm font-semibold text-foreground transition hover:bg-muted"
+                to={`/projects/${resolvedProjectId}/batches/${batch.id}`}
+              >
+                Review
+              </Link>
+              <Link
+                className="inline-flex h-9 items-center justify-center rounded-lg border border-border bg-surface px-3 text-sm font-semibold text-foreground transition hover:bg-muted"
+                to={`/projects/${resolvedProjectId}/batches/${batch.id}/report`}
+              >
+                Report
+              </Link>
+            </>
+          ) : null}
+          <Button
+            disabled={!workspaceId || !batch?.id}
+            isLoading={isDownloading}
+            leftIcon={<Download className="size-4" aria-hidden="true" />}
+            onClick={() => void handleDownloadCsv()}
+            size="sm"
+            variant="secondary"
+          >
+            CSV
+          </Button>
+        </div>
       )}
       eyebrow="Report"
       title="Validation summary"
     >
-      <div className="grid gap-4 p-5">
+      <div className="grid min-w-0 gap-4 p-5">
         {!batch ? (
           <div className="rounded-2xl border border-border bg-background p-4 text-sm leading-6 text-muted-foreground">
             Select a batch to review validation results.
@@ -88,8 +116,8 @@ function ReportSummary({ summary }: { summary: BatchReportSummary }) {
   const progress = Math.round(summary.completion_rate * 100)
 
   return (
-    <div className="grid gap-4">
-      <div className="grid grid-cols-2 gap-3">
+    <div className="grid min-w-0 gap-4">
+      <div className="grid min-w-0 grid-cols-2 gap-3">
         <ReportMetric label="Images" value={summary.total_images} />
         <ReportMetric label="Defects" value={summary.total_detections} />
         <ReportMetric label="Reviewed" value={summary.reviewed_jobs} />
@@ -98,7 +126,7 @@ function ReportSummary({ summary }: { summary: BatchReportSummary }) {
           value={summary.average_confidence == null ? 'n/a' : `${Math.round(summary.average_confidence * 100)}%`}
         />
       </div>
-      <div className="grid gap-2">
+      <div className="grid min-w-0 gap-2">
         {summary.batch_description ? (
           <div className="rounded-2xl border border-border bg-background p-3 text-sm leading-6 text-muted-foreground">
             <span className="font-semibold text-foreground">Description: </span>
@@ -141,7 +169,7 @@ function ReportMetric({
   value: string | number
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-background p-3">
+    <div className="min-w-0 rounded-2xl border border-border bg-background p-3">
       <p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p>
       <p className="mt-1 truncate text-xl font-semibold text-foreground">{value}</p>
     </div>
@@ -158,7 +186,7 @@ function ReportCounts({
   title: string
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-background p-3">
+    <div className="min-w-0 rounded-2xl border border-border bg-background p-3">
       <p className="text-xs font-semibold uppercase text-muted-foreground">{title}</p>
       <div className="mt-2 grid gap-2">
         {items.length ? (

@@ -346,15 +346,38 @@ class DetectionRepository:
         corrected_class_name: str | None = None,
         comment: str | None = None,
     ) -> HumanFeedback:
-        feedback = HumanFeedback(
-            job_id=job_id,
-            detection_box_id=detection_box_id,
-            reviewer_id=reviewer_id,
-            feedback_type=feedback_type,
-            corrected_class_name=corrected_class_name,
-            comment=comment,
+        statement = select(HumanFeedback).where(HumanFeedback.job_id == job_id)
+        if detection_box_id is None:
+            statement = statement.where(HumanFeedback.detection_box_id.is_(None))
+        else:
+            statement = statement.where(HumanFeedback.detection_box_id == detection_box_id)
+
+        result = await self.session.execute(
+            statement.order_by(HumanFeedback.created_at.desc()),
         )
-        self.session.add(feedback)
+        existing_feedback = list(result.scalars())
+        feedback = existing_feedback[0] if existing_feedback else None
+
+        if feedback is None:
+            feedback = HumanFeedback(
+                job_id=job_id,
+                detection_box_id=detection_box_id,
+                reviewer_id=reviewer_id,
+                feedback_type=feedback_type,
+                corrected_class_name=corrected_class_name,
+                comment=comment,
+            )
+            self.session.add(feedback)
+        else:
+            feedback.reviewer_id = reviewer_id
+            feedback.feedback_type = feedback_type
+            feedback.corrected_class_name = corrected_class_name
+            feedback.comment = comment
+            feedback.created_at = datetime.now(timezone.utc)
+
+        for duplicate_feedback in existing_feedback[1:]:
+            await self.session.delete(duplicate_feedback)
+
         await self.session.flush()
         return feedback
 
@@ -376,20 +399,15 @@ class DetectionRepository:
         *,
         job_id: str,
     ) -> list[HumanFeedback]:
-        statement = (
-            select(HumanFeedback)
-            .options(
-                selectinload(HumanFeedback.reviewer),
-                selectinload(HumanFeedback.detection_box),
-                selectinload(HumanFeedback.job),
-            )
-            .where(HumanFeedback.job_id == job_id)
-            .order_by(HumanFeedback.created_at.desc())
+        feedback_items = await self._list_feedback_rows(
+            HumanFeedback.job_id == job_id,
         )
-        result = await self.session.execute(statement)
-        return list(result.scalars())
+        return self._latest_feedback_items(feedback_items)
 
     async def list_batch_feedback(self, *, batch_id: str) -> list[HumanFeedback]:
+        return await self._list_feedback_rows(DetectionJob.batch_id == batch_id)
+
+    async def _list_feedback_rows(self, *where_clauses: Any) -> list[HumanFeedback]:
         statement = (
             select(HumanFeedback)
             .join(DetectionJob, HumanFeedback.job_id == DetectionJob.id)
@@ -398,11 +416,26 @@ class DetectionRepository:
                 selectinload(HumanFeedback.detection_box),
                 selectinload(HumanFeedback.job),
             )
-            .where(DetectionJob.batch_id == batch_id)
+            .where(*where_clauses)
             .order_by(HumanFeedback.created_at.desc())
         )
         result = await self.session.execute(statement)
         return list(result.scalars())
+
+    def _latest_feedback_items(
+        self,
+        feedback_items: list[HumanFeedback],
+    ) -> list[HumanFeedback]:
+        latest_by_target: dict[tuple[str, str | None], HumanFeedback] = {}
+        for item in sorted(
+            feedback_items,
+            key=lambda feedback: feedback.created_at,
+            reverse=True,
+        ):
+            target = (item.job_id, item.detection_box_id)
+            if target not in latest_by_target:
+                latest_by_target[target] = item
+        return list(latest_by_target.values())
 
     def _job_filter_statement(
         self,
