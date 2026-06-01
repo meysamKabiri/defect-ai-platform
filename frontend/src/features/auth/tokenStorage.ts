@@ -56,8 +56,36 @@ export const tokenStorage = {
     }
 
     if (currentWorkspace) {
-      window.localStorage.setItem(WORKSPACE_KEY, JSON.stringify(currentWorkspace))
+      this.setCurrentWorkspace(currentWorkspace)
     }
+  },
+
+  setCurrentWorkspace(workspace: WorkspaceSummary | null) {
+    if (!canUseStorage()) return
+
+    if (workspace) {
+      window.localStorage.setItem(WORKSPACE_KEY, JSON.stringify(workspace))
+    } else {
+      window.localStorage.removeItem(WORKSPACE_KEY)
+    }
+  },
+
+  resolveCurrentWorkspace(workspaces: WorkspaceSummary[]) {
+    const savedWorkspace = this.getCurrentWorkspace()
+    if (savedWorkspace) {
+      const validWorkspace = workspaces.find((workspace) => workspace.id === savedWorkspace.id)
+      if (validWorkspace) {
+        return validWorkspace
+      }
+
+      this.setCurrentWorkspace(null)
+    }
+
+    if (workspaces.length === 1) {
+      return workspaces[0]
+    }
+
+    return null
   },
 
   clearSession() {

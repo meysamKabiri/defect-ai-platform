@@ -24,6 +24,7 @@ from app.schemas.workspace import MemberRoleUpdateRequest
 from app.schemas.workspace import WorkspaceAuthResponse
 from app.schemas.workspace import WorkspaceCreateRequest
 from app.services.admin_service import AdminService
+from app.services.event_publisher import publish_workspace_event
 from app.services.workspace_service import WorkspaceService
 from app.services.workspace_service import build_invite_url
 
@@ -242,7 +243,30 @@ async def create_workspace_project(
         user=current_user,
         roles={WorkspaceRole.OWNER, WorkspaceRole.ADMIN},
     )
-    return await AdminService(db).create_project(payload, workspace_id=workspace_id)
+    project = await AdminService(db).create_project(payload, workspace_id=workspace_id)
+    await publish_workspace_event(
+        event_type="project.created",
+        workspace_id=workspace_id,
+        project_id=project.id,
+    )
+    return project
+
+
+@router.get(
+    "/workspaces/{workspace_id}/projects/{project_id}",
+    response_model=ProjectResponse,
+)
+async def get_workspace_project(
+    workspace_id: str,
+    project_id: str,
+    current_user: Annotated[User, Depends(require_authenticated())],
+    db: AsyncSession = Depends(get_db_session),
+):
+    await WorkspaceService(db).require_membership(
+        workspace_id=workspace_id,
+        user=current_user,
+    )
+    return await AdminService(db).get_project(project_id, workspace_id=workspace_id)
 
 
 @router.patch(
@@ -261,11 +285,17 @@ async def update_workspace_project(
         user=current_user,
         roles={WorkspaceRole.OWNER, WorkspaceRole.ADMIN},
     )
-    return await AdminService(db).update_project(
+    project = await AdminService(db).update_project(
         project_id,
         payload,
         workspace_id=workspace_id,
     )
+    await publish_workspace_event(
+        event_type="project.updated",
+        workspace_id=workspace_id,
+        project_id=project.id,
+    )
+    return project
 
 
 @router.delete(
@@ -285,6 +315,11 @@ async def delete_workspace_project(
         roles={WorkspaceRole.OWNER, WorkspaceRole.ADMIN},
     )
     await AdminService(db).delete_project(project_id, workspace_id=workspace_id)
+    await publish_workspace_event(
+        event_type="project.deleted",
+        workspace_id=workspace_id,
+        project_id=project_id,
+    )
     response.status_code = status.HTTP_204_NO_CONTENT
     return None
 

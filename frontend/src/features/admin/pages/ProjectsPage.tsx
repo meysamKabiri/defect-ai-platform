@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Archive,
   FolderKanban,
   FolderPlus,
+  SlidersHorizontal,
   Search,
   Trash2,
   UserRound,
@@ -19,8 +21,10 @@ import {
   useUpdateProjectMutation,
 } from '@/features/admin/api/adminApi'
 import type { AdminProject } from '@/features/admin/types'
-import { selectCurrentWorkspace } from '@/features/auth/authSlice'
+import { selectCurrentUser, selectCurrentWorkspace } from '@/features/auth/authSlice'
 import { useAppSelector } from '@/app/hooks'
+
+type ProjectFilter = 'all' | 'led-by-me' | 'active'
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString(undefined, {
@@ -47,7 +51,9 @@ function KpiTile({
 
 export function ProjectsPage() {
   const currentWorkspace = useAppSelector(selectCurrentWorkspace)
+  const currentUser = useAppSelector(selectCurrentUser)
   const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState<ProjectFilter>('all')
   const [offset, setOffset] = useState(0)
   const [form, setForm] = useState({
     name: '',
@@ -55,9 +61,20 @@ export function ProjectsPage() {
     owner_id: '',
   })
   const limit = 10
-  const { data } = useListProjectsQuery({ workspaceId: currentWorkspace?.id, search, limit, offset })
+  const canManageProjects = currentWorkspace?.role === 'OWNER' || currentWorkspace?.role === 'ADMIN'
+  const { data } = useListProjectsQuery(
+    {
+      workspaceId: currentWorkspace?.id,
+      search,
+      limit,
+      offset,
+      owner_id: filter === 'led-by-me' ? currentUser?.id : undefined,
+      is_active: filter === 'active' ? true : undefined,
+    },
+    { skip: !currentWorkspace?.id },
+  )
   const { data: members } = useGetWorkspaceMembersQuery(currentWorkspace?.id ?? '', {
-    skip: !currentWorkspace?.id,
+    skip: !currentWorkspace?.id || !canManageProjects,
   })
   const [createProject, createState] = useCreateProjectMutation()
   const [updateProject] = useUpdateProjectMutation()
@@ -65,9 +82,13 @@ export function ProjectsPage() {
 
   const projects = data?.items ?? []
   const activeProjects = projects.filter((project) => project.is_active).length
-  const unassignedProjects = projects.filter((project) => !project.owner_id).length
+  const projectsWithoutLead = projects.filter((project) => !project.owner_id).length
 
   const handleCreate = async () => {
+    if (!canManageProjects) {
+      return
+    }
+
     await createProject({
       workspaceId: currentWorkspace?.id,
       name: form.name,
@@ -77,11 +98,26 @@ export function ProjectsPage() {
     setForm({ name: '', description: '', owner_id: '' })
   }
 
-  const ownerLabel = (ownerId?: string | null) =>
-    members?.items.find((member) => member.user_id === ownerId)?.email ?? 'Unassigned'
+  const projectLeadLabel = (project: AdminProject) => {
+    if (project.owner_full_name) {
+      return project.owner_full_name
+    }
+    if (project.owner_email) {
+      return project.owner_email
+    }
+    if (project.owner_id) {
+      return 'Project lead assigned'
+    }
+    return 'No project lead'
+  }
 
   const handleSearchChange = (value: string) => {
     setSearch(value)
+    setOffset(0)
+  }
+
+  const handleFilterChange = (nextFilter: ProjectFilter) => {
+    setFilter(nextFilter)
     setOffset(0)
   }
 
@@ -92,16 +128,21 @@ export function ProjectsPage() {
     >
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="truncate text-base font-semibold text-foreground">{project.name}</h2>
+          <Link
+            className="truncate text-base font-semibold text-foreground transition hover:text-primary"
+            to={`/projects/${project.id}`}
+          >
+            {project.name}
+          </Link>
           <StatusBadge tone={project.is_active ? 'success' : 'danger'}>
-            {project.is_active ? 'Active pilot' : 'Paused'}
+            {project.is_active ? 'Active' : 'Paused'}
           </StatusBadge>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <UserRound className="size-3.5" aria-hidden="true" />
-            {ownerLabel(project.owner_id)}
+            Project Lead: {projectLeadLabel(project)}
           </span>
           <span>Created {formatDate(project.created_at)}</span>
         </div>
@@ -109,7 +150,7 @@ export function ProjectsPage() {
         {project.description ? (
           <details className="mt-3 text-sm leading-6 text-muted-foreground">
             <summary className="cursor-pointer text-xs font-semibold text-foreground">
-              Pilot notes
+              Project notes
             </summary>
             <p className="mt-2">{project.description}</p>
           </details>
@@ -117,28 +158,38 @@ export function ProjectsPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 md:justify-end">
-        <Button
-          leftIcon={<Archive className="size-4" aria-hidden="true" />}
-          onClick={() =>
-            void updateProject({
-              projectId: project.id,
-              workspaceId: currentWorkspace?.id,
-              body: { is_active: !project.is_active },
-            })
-          }
-          size="sm"
-          variant="secondary"
+        <Link
+          className="inline-flex h-9 items-center justify-center rounded-lg border border-border bg-surface px-3 text-sm font-semibold text-foreground transition hover:bg-muted"
+          to={`/projects/${project.id}`}
         >
-          {project.is_active ? 'Pause' : 'Activate'}
-        </Button>
-        <Button
-          leftIcon={<Trash2 className="size-4" aria-hidden="true" />}
-          onClick={() => void deleteProject({ projectId: project.id, workspaceId: currentWorkspace?.id })}
-          size="sm"
-          variant="ghost"
-        >
-          Delete
-        </Button>
+          Open
+        </Link>
+        {canManageProjects ? (
+          <>
+          <Button
+            leftIcon={<Archive className="size-4" aria-hidden="true" />}
+            onClick={() =>
+              void updateProject({
+                projectId: project.id,
+                workspaceId: currentWorkspace?.id,
+                body: { is_active: !project.is_active },
+              })
+            }
+            size="sm"
+            variant="secondary"
+          >
+            {project.is_active ? 'Pause' : 'Activate'}
+          </Button>
+          <Button
+            leftIcon={<Trash2 className="size-4" aria-hidden="true" />}
+            onClick={() => void deleteProject({ projectId: project.id, workspaceId: currentWorkspace?.id })}
+            size="sm"
+            variant="ghost"
+          >
+            Delete
+          </Button>
+          </>
+        ) : null}
       </div>
     </article>
   )
@@ -148,84 +199,123 @@ export function ProjectsPage() {
       <section className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
         <div className="max-w-2xl">
           <p className="text-xs font-semibold uppercase text-muted-foreground">
-            Pilot workspaces
+            Workspace projects
           </p>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-            Manage validation projects.
+            Inspection validation projects.
           </h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Keep each paid diagnostic or pilot scoped to one owner, one dataset, and one clear inspection goal.
+            All active members can see projects in this workspace. Your workspace role controls who can create,
+            pause, or delete project work.
           </p>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[28rem]">
-          <KpiTile label="Total" value={data?.total ?? 0} />
-          <KpiTile label="Active" value={activeProjects} />
-          <KpiTile label="Unassigned" value={unassignedProjects} />
+          <KpiTile label="Matching" value={data?.total ?? 0} />
+          <KpiTile label="Active on page" value={activeProjects} />
+          <KpiTile label="No lead" value={projectsWithoutLead} />
         </div>
       </section>
 
-      <Panel eyebrow="Setup" title="Validation pilots">
+      <Panel eyebrow="Projects" title="Workspace project list">
         <div className="grid gap-4 p-5">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div className="relative md:max-w-sm md:flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
               <Input
                 className="pl-9"
                 onChange={(event) => handleSearchChange(event.target.value)}
-                placeholder="Search pilots"
+                placeholder="Search projects"
                 value={search}
               />
             </div>
 
-            <details className="rounded-xl border border-border bg-background">
-              <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-semibold text-foreground">
-                <FolderPlus className="size-4 text-primary" aria-hidden="true" />
-                New pilot
-              </summary>
-              <div className="grid gap-3 border-t border-border p-4 md:min-w-[34rem] md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                <Input
-                  onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                  placeholder="Pilot name"
-                  value={form.name}
-                />
-                <select
-                  className="h-11 rounded-xl border border-border bg-surface px-3 text-sm text-foreground"
-                  onChange={(event) => setForm((current) => ({ ...current, owner_id: event.target.value }))}
-                  value={form.owner_id}
-                >
-                  <option value="">Unassigned</option>
-                  {members?.items.map((member) => (
-                    <option key={member.user_id} value={member.user_id}>
-                      {member.email}
-                    </option>
-                  ))}
-                </select>
-                <Input
-                  className="md:col-span-2"
-                  onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
-                  placeholder="Inspection goal or dataset notes"
-                  value={form.description}
-                />
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-background p-1">
+                <span className="inline-flex items-center gap-1 px-2 text-xs font-semibold uppercase text-muted-foreground">
+                  <SlidersHorizontal className="size-3.5" aria-hidden="true" />
+                  Filter
+                </span>
                 <Button
-                  className="md:col-span-2"
-                  disabled={!form.name}
-                  isLoading={createState.isLoading}
-                  leftIcon={<FolderKanban className="size-4" aria-hidden="true" />}
-                  onClick={() => void handleCreate()}
+                  onClick={() => handleFilterChange('all')}
+                  size="sm"
+                  variant={filter === 'all' ? 'primary' : 'ghost'}
                 >
-                  Create pilot
+                  All projects
+                </Button>
+                <Button
+                  onClick={() => handleFilterChange('led-by-me')}
+                  size="sm"
+                  variant={filter === 'led-by-me' ? 'primary' : 'ghost'}
+                >
+                  Created/led by me
+                </Button>
+                <Button
+                  onClick={() => handleFilterChange('active')}
+                  size="sm"
+                  variant={filter === 'active' ? 'primary' : 'ghost'}
+                >
+                  Active
                 </Button>
               </div>
-            </details>
+
+              {canManageProjects ? (
+                <details className="rounded-xl border border-border bg-background">
+                  <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-semibold text-foreground">
+                    <FolderPlus className="size-4 text-primary" aria-hidden="true" />
+                    New project
+                  </summary>
+                  <div className="grid gap-3 border-t border-border p-4 md:min-w-[34rem] md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                    <Input
+                      onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                      placeholder="Project name"
+                      value={form.name}
+                    />
+                    <select
+                      className="h-11 rounded-xl border border-border bg-surface px-3 text-sm text-foreground"
+                      onChange={(event) => setForm((current) => ({ ...current, owner_id: event.target.value }))}
+                      value={form.owner_id}
+                    >
+                      <option value="">No project lead</option>
+                      {members?.items.map((member) => (
+                        <option key={member.user_id} value={member.user_id}>
+                          {member.full_name || member.email}
+                        </option>
+                      ))}
+                    </select>
+                    <Input
+                      className="md:col-span-2"
+                      onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+                      placeholder="Inspection goal or validation notes"
+                      value={form.description}
+                    />
+                    <Button
+                      className="md:col-span-2"
+                      disabled={!form.name}
+                      isLoading={createState.isLoading}
+                      leftIcon={<FolderKanban className="size-4" aria-hidden="true" />}
+                      onClick={() => void handleCreate()}
+                    >
+                      Create project
+                    </Button>
+                  </div>
+                </details>
+              ) : null}
+            </div>
           </div>
+
+          {!canManageProjects ? (
+            <div className="rounded-xl border border-border bg-background px-4 py-3 text-sm text-muted-foreground">
+              Project management actions are available to workspace owners and admins.
+            </div>
+          ) : null}
 
           <div className="grid gap-3">
             {projects.length ? (
               projects.map(renderProject)
             ) : (
               <div className="rounded-2xl border border-border bg-background p-8 text-center text-sm text-muted-foreground">
-                No validation pilots found.
+                No projects found.
               </div>
             )}
           </div>

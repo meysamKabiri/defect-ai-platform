@@ -48,6 +48,8 @@ class ProjectResponse(BaseModel):
     name: str
     description: str | None = None
     owner_id: str | None = None
+    owner_email: EmailStr | None = None
+    owner_full_name: str | None = None
     workspace_id: str | None = None
     is_active: bool
     created_at: datetime

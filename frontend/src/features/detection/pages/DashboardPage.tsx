@@ -25,9 +25,13 @@ import type {
 } from '@/features/detection/detectionTypes'
 import { resetUploadProgress } from '@/features/detection/uploadProgressSlice'
 import { selectCurrentWorkspace } from '@/features/auth/authSlice'
+import { BatchListPanel } from '@/features/detection/components/BatchListPanel'
+import { BatchReportPanel } from '@/features/detection/components/BatchReportPanel'
+import { BatchUploadPanel } from '@/features/detection/components/BatchUploadPanel'
 import { getImageUrl } from '@/lib/image'
 import {
   useGetAssignedProjectsQuery,
+  useGetBatchesQuery,
   useGetDetectionJobQuery,
   useGetDetectionJobsQuery,
   useGetJobFeedbackQuery,
@@ -130,11 +134,16 @@ export function DashboardPage() {
   const dispatch = useAppDispatch()
   const { progress } = useAppSelector((state) => state.uploadProgress)
   const currentWorkspace = useAppSelector(selectCurrentWorkspace)
+  const canUploadAndReview =
+    currentWorkspace?.role === 'OWNER' ||
+    currentWorkspace?.role === 'ADMIN' ||
+    currentWorkspace?.role === 'ENGINEER'
 
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const previewUrlRef = useRef<string | null>(null)
   const [jobId, setJobId] = useState<string | null>(null)
+  const [selectedBatchId, setSelectedBatchId] = useState<string | undefined>()
   const [jobErrorMessage, setJobErrorMessage] = useState<string>()
   const [selectedProjectId, setSelectedProjectId] = useState('')
   const { data: assignedProjects } = useGetAssignedProjectsQuery(currentWorkspace?.id)
@@ -153,9 +162,22 @@ export function DashboardPage() {
       workspaceId: currentWorkspace?.id,
     },
     {
-      pollingInterval: selectedProjectId ? 5000 : 0,
       skip: !selectedProjectId,
-      skipPollingIfUnfocused: true,
+    },
+  )
+  const {
+    currentData: batchesData,
+    isFetching: isFetchingBatches,
+    refetch: refetchBatches,
+  } = useGetBatchesQuery(
+    {
+      workspaceId: currentWorkspace?.id,
+      projectId: selectedProjectId,
+      limit: 8,
+      offset: 0,
+    },
+    {
+      skip: !currentWorkspace?.id || !selectedProjectId,
     },
   )
 
@@ -169,9 +191,7 @@ export function DashboardPage() {
   ] = useUploadDetectionMutation()
 
   const { currentData: jobData } = useGetDetectionJobQuery(jobId!, {
-    pollingInterval: 1000,
     skip: !jobId,
-    skipPollingIfUnfocused: true,
   })
   const { currentData: feedbackData } = useGetJobFeedbackQuery(jobId!, {
     skip: !jobId || jobData?.status !== 'completed',
@@ -241,6 +261,8 @@ export function DashboardPage() {
   const feedbackItems = feedbackData?.items ?? []
   const latestFeedback = feedbackItems[0]
   const reviewedCount = feedbackItems.length
+  const batches = batchesData?.items ?? []
+  const selectedBatch = batches.find((batch) => batch.id === selectedBatchId) ?? batches[0]
 
   const replacePreviewUrl = (nextUrl: string | null) => {
     if (previewUrlRef.current) {
@@ -253,6 +275,7 @@ export function DashboardPage() {
 
   const handleFileSelect = async (nextFile: File) => {
     setJobId(null)
+    setSelectedBatchId(undefined)
     setJobErrorMessage(undefined)
     resetUploadDetection()
     dispatch(resetUploadProgress())
@@ -289,7 +312,11 @@ export function DashboardPage() {
   const handleAnalyze = async () => {
     if (!file) return
     if (!selectedProjectId) {
-      setJobErrorMessage('Select an assigned project before starting analysis.')
+      setJobErrorMessage('Select an active workspace project before starting analysis.')
+      return
+    }
+    if (!canUploadAndReview) {
+      setJobErrorMessage('Your workspace role can view results, but cannot upload images.')
       return
     }
 
@@ -316,6 +343,10 @@ export function DashboardPage() {
 
   const handleSubmitFeedback = async (feedbackType: HumanFeedbackType) => {
     if (!currentJob?.job_id || currentJob.status !== 'completed') return
+    if (!canUploadAndReview) {
+      setJobErrorMessage('Your workspace role can view feedback, but cannot submit it.')
+      return
+    }
 
     try {
       setJobErrorMessage(undefined)
@@ -384,7 +415,10 @@ export function DashboardPage() {
               <div className="grid gap-3 p-5">
                 <select
                   className="h-11 rounded-xl border border-border bg-surface px-3 text-sm text-foreground outline-none transition focus:ring-2 focus:ring-ring"
-                  onChange={(event) => setSelectedProjectId(event.target.value)}
+                  onChange={(event) => {
+                    setSelectedProjectId(event.target.value)
+                    setSelectedBatchId(undefined)
+                  }}
                   value={selectedProjectId}
                 >
                   <option value="">No project selected</option>
@@ -395,7 +429,7 @@ export function DashboardPage() {
                   ))}
                 </select>
                 <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                  <span>{assignedProjects?.total ?? 0} assigned projects</span>
+                  <span>{assignedProjects?.total ?? 0} active workspace projects</span>
                   {selectedProjectId ? (
                     <StatusBadge tone="success">Project scoped</StatusBadge>
                   ) : (
@@ -414,15 +448,43 @@ export function DashboardPage() {
             </Panel>
 
             <UploadZone
-              disabledReason="Choose one of your assigned active projects before uploading an inspection image."
+              disabledReason={
+                canUploadAndReview
+                  ? 'Choose an active workspace project before uploading an inspection image.'
+                  : 'Your workspace role can view inspections, but cannot upload images.'
+              }
               file={file}
-              isDisabled={!selectedProjectId}
+              isDisabled={!selectedProjectId || !canUploadAndReview}
               isLoading={isUploading || isAnalyzing}
               onAnalyze={handleAnalyze}
               onClear={handleClear}
               onFileSelect={handleFileSelect}
               progress={progress}
               status={uploadStatus}
+            />
+
+            <BatchUploadPanel
+              disabledReason={
+                canUploadAndReview
+                  ? undefined
+                  : 'Your workspace role can view validation batches, but cannot upload images.'
+              }
+              isDisabled={!canUploadAndReview}
+              onUploaded={(batchId) => {
+                setSelectedBatchId(batchId)
+                void refetchBatches()
+                void refetchProjectJobs()
+              }}
+              projectId={selectedProjectId}
+              workspaceId={currentWorkspace?.id}
+            />
+
+            <BatchListPanel
+              batches={batches}
+              isFetching={isFetchingBatches}
+              onRefresh={() => void refetchBatches()}
+              onSelect={setSelectedBatchId}
+              selectedBatchId={selectedBatch?.id}
             />
 
             <details className="rounded-2xl border border-border bg-surface shadow-card">
@@ -500,7 +562,13 @@ export function DashboardPage() {
             </Suspense>
 
             <DetectionCard
+              canSubmitFeedback={canUploadAndReview}
               error={errorMessage}
+              feedbackDisabledReason={
+                canUploadAndReview
+                  ? undefined
+                  : 'Your workspace role can view feedback, but cannot submit it.'
+              }
               feedbackItems={feedbackItems}
               isLoading={isUploading || isAnalyzing}
               isSubmittingFeedback={isSubmittingFeedback}
@@ -508,6 +576,13 @@ export function DashboardPage() {
               onSubmitFeedback={handleSubmitFeedback}
               result={result}
             />
+
+            <div className="xl:col-start-2">
+              <BatchReportPanel
+                batch={selectedBatch}
+                workspaceId={currentWorkspace?.id}
+              />
+            </div>
           </div>
         </section>
       </div>

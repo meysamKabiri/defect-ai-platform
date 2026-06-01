@@ -18,11 +18,94 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.db.models.project import Project
+    from app.db.models.user import User
+    from app.db.models.workspace import Workspace
 
 
 def new_uuid() -> str:
     return str(uuid4())
 
+
+class InspectionBatch(Base):
+    __tablename__ = "inspection_batches"
+
+    id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+        default=new_uuid,
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey(
+            "workspaces.id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+        index=True,
+    )
+    project_id: Mapped[str | None] = mapped_column(
+        ForeignKey(
+            "projects.id",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+        index=True,
+    )
+    created_by_user_id: Mapped[str | None] = mapped_column(
+        ForeignKey(
+            "users.id",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+        index=True,
+    )
+    name: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+    description: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+    status: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="queued",
+        index=True,
+    )
+    total_jobs: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    jobs: Mapped[list["DetectionJob"]] = relationship(
+        "DetectionJob",
+        back_populates="batch",
+        passive_deletes=True,
+    )
+    project: Mapped["Project | None"] = relationship("Project")
+    workspace: Mapped["Workspace"] = relationship("Workspace")
+    created_by: Mapped["User | None"] = relationship("User")
+
+    __table_args__ = (
+        Index("ix_inspection_batches_workspace_status", "workspace_id", "status"),
+        Index("ix_inspection_batches_project_created_at", "project_id", "created_at"),
+    )
 
 class DetectionJob(Base):
     __tablename__ = "detection_jobs"
@@ -53,6 +136,14 @@ class DetectionJob(Base):
     project_id: Mapped[str | None] = mapped_column(
         ForeignKey(
             "projects.id",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+        index=True,
+    )
+    batch_id: Mapped[str | None] = mapped_column(
+        ForeignKey(
+            "inspection_batches.id",
             ondelete="SET NULL",
         ),
         nullable=True,
@@ -129,9 +220,14 @@ class DetectionJob(Base):
         back_populates="detection_jobs",
     )
     project: Mapped["Project | None"] = relationship("Project")
+    batch: Mapped["InspectionBatch | None"] = relationship(
+        "InspectionBatch",
+        back_populates="jobs",
+    )
 
     __table_args__ = (
         Index("ix_detection_jobs_status_created_at", "status", "created_at"),
+        Index("ix_detection_jobs_batch_status_created_at", "batch_id", "status", "created_at"),
     )
 
 

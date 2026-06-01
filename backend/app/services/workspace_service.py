@@ -58,7 +58,8 @@ class WorkspaceService:
             email=email,
             full_name=payload.owner_full_name,
             hashed_password=hash_password(payload.password),
-            role=UserRole.SUPER_ADMIN,
+            role=UserRole.ENGINEER,
+            is_platform_admin=False,
             is_active=True,
         )
         self.session.add(user)
@@ -111,13 +112,16 @@ class WorkspaceService:
         ]
         current_workspace = workspace_summaries[0] if workspace_summaries else None
 
+        user_payload = {
+            "id": user.id,
+            "email": user.email,
+            "full_name": user.full_name,
+        }
+        if user.is_platform_admin:
+            user_payload["platform_admin"] = True
+
         return {
-            "user": {
-                "id": user.id,
-                "email": user.email,
-                "full_name": user.full_name,
-                "role": user.role.value,
-            },
+            "user": user_payload,
             "accessToken": access_token,
             "refreshToken": refresh_token,
             "workspaces": workspace_summaries,
@@ -254,7 +258,8 @@ class WorkspaceService:
                 email=invitation.email,
                 full_name=full_name,
                 hashed_password=hash_password(password),
-                role=self._legacy_role_for_workspace_role(invitation.role),
+                role=UserRole.ENGINEER,
+                is_platform_admin=False,
                 is_active=True,
             )
             self.session.add(user)
@@ -390,15 +395,6 @@ class WorkspaceService:
             raise HTTPException(status_code=403, detail="Admins cannot manage owners or admins")
         if new_role in {WorkspaceRole.OWNER, WorkspaceRole.ADMIN}:
             raise HTTPException(status_code=403, detail="Admins cannot assign owner or admin roles")
-
-    def _legacy_role_for_workspace_role(self, role: str) -> UserRole:
-        return {
-            WorkspaceRole.OWNER.value: UserRole.SUPER_ADMIN,
-            WorkspaceRole.ADMIN.value: UserRole.ADMIN,
-            WorkspaceRole.ENGINEER.value: UserRole.ENGINEER,
-            WorkspaceRole.VIEWER.value: UserRole.VIEWER,
-        }[role]
-
 
 def build_invite_url(token: str) -> str:
     frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173")

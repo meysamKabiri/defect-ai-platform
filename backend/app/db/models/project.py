@@ -1,17 +1,18 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy import Boolean
 from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
 from sqlalchemy import Index
+from sqlalchemy import inspect
 from sqlalchemy import String
 from sqlalchemy import Text
 from sqlalchemy import func
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
-from typing import TYPE_CHECKING
 
 from app.db.base import Base
 
@@ -58,6 +59,18 @@ class Project(Base):
 
     owner: Mapped["User | None"] = relationship("User", back_populates="projects")
     workspace: Mapped["Workspace | None"] = relationship("Workspace")
+
+    @property
+    def owner_email(self) -> str | None:
+        if "owner" in inspect(self).unloaded or self.owner is None:
+            return None
+        return self.owner.email
+
+    @property
+    def owner_full_name(self) -> str | None:
+        if "owner" in inspect(self).unloaded or self.owner is None:
+            return None
+        return self.owner.full_name
 
     __table_args__ = (
         Index("ix_projects_owner_name", "owner_id", "name"),

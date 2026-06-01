@@ -7,6 +7,7 @@ import {
 } from '@reduxjs/toolkit/query/react'
 import { API_V1_BASE_URL } from '@/lib/config'
 import { logout, setCredentials } from '@/features/auth/authSlice'
+import { tokenStorage } from '@/features/auth/tokenStorage'
 import type { ApiAuthResponse, AuthResponse } from '@/features/auth/types'
 import type { RootState } from '@/app/store'
 
@@ -18,12 +19,15 @@ function normalizeAuthResponse(response: ApiAuthResponse): AuthResponse {
     throw new Error('Auth response did not include an access token.')
   }
 
+  const workspaces = response.workspaces ?? []
+  const currentWorkspace = tokenStorage.resolveCurrentWorkspace(workspaces)
+
   return {
     user: response.user,
     accessToken,
     refreshToken,
-    workspaces: response.workspaces ?? [],
-    currentWorkspace: response.current_workspace ?? response.workspace ?? response.workspaces?.[0] ?? null,
+    workspaces,
+    currentWorkspace,
   }
 }
 
@@ -83,7 +87,24 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
 export const baseApi = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithReauth,
-  tagTypes: ['Auth', 'Detection', 'AdminUsers', 'AdminProjects', 'AdminRoles', 'WorkspaceMembers', 'WorkspaceInvitations'],
+  tagTypes: [
+    'Auth',
+    'Detection',
+    'Projects',
+    'Project',
+    'Batches',
+    'Batch',
+    'Jobs',
+    'Job',
+    'Feedback',
+    'Report',
+    'Reports',
+    'AdminUsers',
+    'AdminProjects',
+    'AdminRoles',
+    'WorkspaceMembers',
+    'WorkspaceInvitations',
+  ],
   endpoints: () => ({}),
 })
 

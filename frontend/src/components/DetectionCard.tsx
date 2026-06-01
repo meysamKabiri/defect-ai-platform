@@ -21,6 +21,8 @@ type DetectionCardProps = {
   feedbackItems?: HumanFeedbackResponse[]
   isLoading?: boolean
   isSubmittingFeedback?: boolean
+  canSubmitFeedback?: boolean
+  feedbackDisabledReason?: string
   onSubmitFeedback?: (feedbackType: HumanFeedbackType) => void
 }
 
@@ -106,7 +108,9 @@ function EmptyDetectionState({
 }
 
 export function DetectionCard({
+  canSubmitFeedback: canSubmitFeedbackAction = true,
   error,
+  feedbackDisabledReason,
   feedbackItems = [],
   isLoading,
   isSubmittingFeedback,
@@ -124,6 +128,7 @@ export function DetectionCard({
     job?.processing_time_seconds
   const status = job?.status ?? result?.status ?? 'idle'
   const canSubmitFeedback =
+    canSubmitFeedbackAction &&
     Boolean(job?.job_id ?? result?.jobId) &&
     status === 'completed' &&
     !isLoading &&
@@ -244,7 +249,7 @@ export function DetectionCard({
 
           {!canSubmitFeedback ? (
             <p className="mt-3 text-xs leading-5 text-muted-foreground">
-              Feedback unlocks after a completed detection job is loaded.
+              {feedbackDisabledReason ?? 'Feedback unlocks after a completed detection job is loaded.'}
             </p>
           ) : null}
         </div>

@@ -153,7 +153,7 @@ export function UploadZone({
 
             <p className="text-base font-semibold text-foreground">
               {isDisabled
-                ? 'Select a project first'
+                ? disabledReason ? 'Upload unavailable' : 'Select a project first'
                 : isDragActive
                   ? 'Drop image to inspect'
                   : 'Drop image or browse'}

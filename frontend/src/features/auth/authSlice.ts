@@ -38,11 +38,14 @@ const authSlice = createSlice({
     },
 
     setCredentials(state, action: PayloadAction<AuthResponse>) {
+      const workspaces = action.payload.workspaces ?? state.workspaces
+      const selectedWorkspace = tokenStorage.resolveCurrentWorkspace(workspaces)
+
       state.user = action.payload.user ?? state.user
       state.accessToken = action.payload.accessToken
       state.refreshToken = action.payload.refreshToken ?? state.refreshToken
-      state.workspaces = action.payload.workspaces ?? state.workspaces
-      state.currentWorkspace = action.payload.currentWorkspace ?? state.currentWorkspace
+      state.workspaces = workspaces
+      state.currentWorkspace = selectedWorkspace
       state.status = 'authenticated'
       state.error = null
 
@@ -52,8 +55,13 @@ const authSlice = createSlice({
           refreshToken: action.payload.refreshToken,
         },
         action.payload.user,
-        action.payload.currentWorkspace,
+        selectedWorkspace,
       )
+    },
+
+    setCurrentWorkspace(state, action: PayloadAction<WorkspaceSummary | null>) {
+      state.currentWorkspace = action.payload
+      tokenStorage.setCurrentWorkspace(action.payload)
     },
 
     setUser(state, action: PayloadAction<AuthUser | null>) {
@@ -78,7 +86,14 @@ const authSlice = createSlice({
   },
 })
 
-export const { setSessionChecking, setCredentials, setUser, setAuthError, logout } = authSlice.actions
+export const {
+  setAuthError,
+  setCredentials,
+  setCurrentWorkspace,
+  setSessionChecking,
+  setUser,
+  logout,
+} = authSlice.actions
 export const authReducer = authSlice.reducer
 
 export const selectAuth = (state: RootState) => state.auth
@@ -86,8 +101,13 @@ export const selectCurrentUser = (state: RootState) => state.auth.user
 export const selectAccessToken = (state: RootState) => state.auth.accessToken
 export const selectRefreshToken = (state: RootState) => state.auth.refreshToken
 export const selectCurrentWorkspace = (state: RootState) => state.auth.currentWorkspace
+export const selectWorkspaces = (state: RootState) => state.auth.workspaces
 export const selectWorkspaceRole = (state: RootState) => state.auth.currentWorkspace?.role ?? null
 export const selectAuthStatus = (state: RootState) => state.auth.status
+export const selectNeedsWorkspaceSelection = (state: RootState) =>
+  state.auth.status === 'authenticated' &&
+  state.auth.workspaces.length > 1 &&
+  !state.auth.currentWorkspace
 export const selectIsAuthenticated = createSelector(
   selectAuth,
   (auth) => auth.status === 'authenticated' && Boolean(auth.accessToken),

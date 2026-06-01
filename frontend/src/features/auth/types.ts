@@ -5,7 +5,8 @@ export type AuthUser = {
   email: string
   full_name?: string | null
   name?: string
-  role: UserRole
+  role?: UserRole
+  platform_admin?: boolean
   roles?: string[]
 }
 
