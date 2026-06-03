@@ -107,6 +107,7 @@ class InspectionBatch(Base):
         Index("ix_inspection_batches_project_created_at", "project_id", "created_at"),
     )
 
+
 class DetectionJob(Base):
     __tablename__ = "detection_jobs"
 
@@ -227,7 +228,12 @@ class DetectionJob(Base):
 
     __table_args__ = (
         Index("ix_detection_jobs_status_created_at", "status", "created_at"),
-        Index("ix_detection_jobs_batch_status_created_at", "batch_id", "status", "created_at"),
+        Index(
+            "ix_detection_jobs_batch_status_created_at",
+            "batch_id",
+            "status",
+            "created_at",
+        ),
     )
 
 
@@ -359,6 +365,4 @@ class HumanFeedback(Base):
     )
     reviewer: Mapped["User | None"] = relationship("User")
 
-    __table_args__ = (
-        Index("ix_human_feedback_job_type", "job_id", "feedback_type"),
-    )
+    __table_args__ = (Index("ix_human_feedback_job_type", "job_id", "feedback_type"),)

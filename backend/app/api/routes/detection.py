@@ -111,10 +111,7 @@ async def list_job_feedback(
     feedback_items = await persistence_service.list_feedback(job_id=job.id)
 
     return {
-        "items": [
-            _serialize_feedback(feedback)
-            for feedback in feedback_items
-        ],
+        "items": [_serialize_feedback(feedback) for feedback in feedback_items],
     }
 
 
@@ -300,12 +297,14 @@ def _serialize_job(
         project_id=job.project_id,
         batch_id=job.batch_id,
         original_filename=job.original_filename,
-        image_url=f"/api/v1/detect/jobs/{job.id}/image/original"
-        if job.image_url
-        else None,
-        annotated_image_url=f"/api/v1/detect/jobs/{job.id}/image/annotated"
-        if job.annotated_image_url
-        else None,
+        image_url=(
+            f"/api/v1/detect/jobs/{job.id}/image/original" if job.image_url else None
+        ),
+        annotated_image_url=(
+            f"/api/v1/detect/jobs/{job.id}/image/annotated"
+            if job.annotated_image_url
+            else None
+        ),
         processing_time_seconds=job.processing_time_seconds,
         detection_count=job.detection_count,
         error=job.error_message,
@@ -314,8 +313,7 @@ def _serialize_job(
         started_at=job.started_at,
         completed_at=job.completed_at,
         detections=[
-            _serialize_detection_box(detection)
-            for detection in job.detections
+            _serialize_detection_box(detection) for detection in job.detections
         ],
     )
 
