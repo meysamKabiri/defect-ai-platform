@@ -69,6 +69,24 @@ class DetectionRepository:
         await self.session.flush()
         return batch
 
+    async def increment_batch_total_jobs(
+        self,
+        *,
+        batch_id: str,
+        workspace_id: str,
+        count: int,
+    ) -> InspectionBatch | None:
+        batch = await self.get_batch(batch_id=batch_id, workspace_id=workspace_id)
+        if batch is None:
+            return None
+
+        batch.total_jobs += count
+        if count > 0:
+            batch.status = "queued"
+            batch.completed_at = None
+        await self.session.flush()
+        return batch
+
     async def get_batch(
         self,
         *,

@@ -53,6 +53,19 @@ class DetectionPersistenceService:
             total_jobs=total_jobs,
         )
 
+    async def increment_batch_total_jobs(
+        self,
+        *,
+        batch_id: str,
+        workspace_id: str,
+        count: int,
+    ) -> InspectionBatch | None:
+        return await self.repository.increment_batch_total_jobs(
+            batch_id=batch_id,
+            workspace_id=workspace_id,
+            count=count,
+        )
+
     async def get_batch(
         self,
         *,

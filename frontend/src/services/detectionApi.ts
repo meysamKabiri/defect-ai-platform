@@ -2,6 +2,7 @@ import { baseApi } from '@/services/baseApi'
 import type {
   AssignedProjectListResponse,
   BatchFeedbackListResponse,
+  BatchCreateRequest,
   BatchListResponse,
   BatchProgress,
   BatchReportSummary,
@@ -107,6 +108,50 @@ export const detectionApi = baseApi.injectEndpoints({
         'Jobs',
         'Reports',
         'Report',
+        { type: 'Project', id: projectId },
+      ],
+    }),
+
+    createBatch: builder.mutation<InspectionBatch, BatchCreateRequest>({
+      query: ({ workspaceId, projectId, name, description }) => ({
+        url: `/workspaces/${workspaceId}/batches`,
+        method: 'POST',
+        body: {
+          project_id: projectId,
+          name,
+          description,
+        },
+      }),
+      invalidatesTags: (_result, _error, { projectId }) => [
+        'Batches',
+        { type: 'Batches', id: `project:${projectId}` },
+        { type: 'Project', id: projectId },
+      ],
+    }),
+
+    addBatchImages: builder.mutation<
+      BatchUploadResponse,
+      { workspaceId: string; batchId: string; projectId: string; files: File[] }
+    >({
+      query: ({ workspaceId, batchId, files }) => {
+        const formData = new FormData()
+        files.forEach((file) => formData.append('files', file))
+
+        return {
+          url: `/workspaces/${workspaceId}/batches/${batchId}/images`,
+          method: 'POST',
+          body: formData,
+        }
+      },
+      invalidatesTags: (_result, _error, { batchId, projectId }) => [
+        'Batches',
+        { type: 'Batches', id: `project:${projectId}` },
+        { type: 'Batch', id: batchId },
+        'Detection',
+        'Jobs',
+        'Reports',
+        'Report',
+        { type: 'Report', id: batchId },
         { type: 'Project', id: projectId },
       ],
     }),
@@ -246,6 +291,8 @@ export const detectionApi = baseApi.injectEndpoints({
 })
 
 export const {
+  useAddBatchImagesMutation,
+  useCreateBatchMutation,
   useCreateJobFeedbackMutation,
   useGetBatchQuery,
   useGetBatchFeedbackQuery,

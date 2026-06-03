@@ -44,6 +44,10 @@ function destinationFromState(state: unknown) {
   return `${from.pathname}${from.search ?? ''}`
 }
 
+function destinationAfterLogin(state: unknown) {
+  return state ? destinationFromState(state) : ROUTES.dashboard
+}
+
 export function SelectWorkspacePage() {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
@@ -56,18 +60,18 @@ export function SelectWorkspacePage() {
     if (!currentWorkspace && workspaces.length === 1) {
       dispatch(setCurrentWorkspace(workspaces[0]))
       dispatch(baseApi.util.resetApiState())
-      navigate(destinationFromState(location.state), { replace: true })
+      navigate(destinationAfterLogin(location.state), { replace: true })
     }
   }, [currentWorkspace, dispatch, location.state, navigate, workspaces])
 
   if (currentWorkspace) {
-    return <Navigate to={destinationFromState(location.state)} replace />
+    return <Navigate to={destinationAfterLogin(location.state)} replace />
   }
 
   const handleSelect = (workspace: WorkspaceSummary) => {
     dispatch(setCurrentWorkspace(workspace))
     dispatch(baseApi.util.resetApiState())
-    navigate(destinationFromState(location.state), { replace: true })
+    navigate(destinationAfterLogin(location.state), { replace: true })
   }
 
   return (

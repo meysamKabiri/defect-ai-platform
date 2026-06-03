@@ -218,10 +218,20 @@ export function JobReviewPage() {
                 Whole-image/job feedback
               </p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Use these when the full image needs review context, not for a specific prediction row.
+                Use this for the full image review, especially when there are no detections or when the image-level result is acceptable.
               </p>
             </div>
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button
+                disabled={!canSubmitFeedback}
+                isLoading={createState.isLoading}
+                leftIcon={<CheckCircle2 className="size-4" aria-hidden="true" />}
+                onClick={() => void submitFeedback('correct')}
+                size="sm"
+                variant={wholeImageFeedback?.feedback_type === 'correct' ? 'primary' : 'secondary'}
+              >
+                Correct
+              </Button>
               <Button
                 disabled={!canSubmitFeedback}
                 isLoading={createState.isLoading}
@@ -285,7 +295,7 @@ export function JobReviewPage() {
         <Panel eyebrow="Prediction feedback" title="Detection rows">
           <div className="grid gap-3 p-5">
             <div className="rounded-2xl border border-border bg-background p-4 text-sm leading-6 text-muted-foreground">
-              Each prediction row supports Correct, False Positive, or Wrong Class. Wrong Class asks for the corrected class name.
+              Use this for individual detected boxes/classes. Each prediction row supports Correct, False Positive, or Wrong Class. Wrong Class asks for the corrected class name.
             </div>
             {detections.length ? (
               detections.map((detection) => {

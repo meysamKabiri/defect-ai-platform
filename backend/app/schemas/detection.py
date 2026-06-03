@@ -29,6 +29,12 @@ class BatchJobUploadResponse(BaseModel):
     original_filename: str | None = None
 
 
+class BatchCreateRequest(BaseModel):
+    project_id: str
+    name: str | None = Field(default=None, max_length=255)
+    description: str | None = None
+
+
 class BatchUploadResponse(BaseModel):
     id: str
     workspace_id: str

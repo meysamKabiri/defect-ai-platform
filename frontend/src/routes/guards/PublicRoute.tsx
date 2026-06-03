@@ -1,4 +1,4 @@
-import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { Navigate, Outlet } from 'react-router-dom'
 import { Spinner } from '@/components/common/Spinner'
 import { ROUTES } from '@/constants/routes'
 import { useAppSelector } from '@/app/hooks'
@@ -9,7 +9,6 @@ import {
 } from '@/features/auth/authSlice'
 
 export function PublicRoute() {
-  const location = useLocation()
   const status = useAppSelector(selectAuthStatus)
   const isAuthenticated = useAppSelector(selectIsAuthenticated)
   const needsWorkspaceSelection = useAppSelector(selectNeedsWorkspaceSelection)
@@ -27,7 +26,7 @@ export function PublicRoute() {
       <Navigate
         to={needsWorkspaceSelection ? ROUTES.selectWorkspace : ROUTES.dashboard}
         replace
-        state={location.state}
+        state={undefined}
       />
     )
   }

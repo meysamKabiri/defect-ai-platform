@@ -204,16 +204,18 @@ export function ProjectDetailPage() {
                   const progress = Math.round((batch.progress?.completion_rate ?? 0) * 100)
 
                   return (
-                    <Link
-                      className="grid gap-3 rounded-2xl border border-border bg-background p-4 transition hover:border-primary/40 hover:bg-primary/5"
+                    <article
+                      className="grid gap-3 rounded-2xl border border-border bg-background p-4"
                       key={batch.id}
-                      to={`/projects/${projectId}/batches/${batch.id}`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-foreground">
+                          <Link
+                            className="block truncate text-sm font-semibold text-foreground transition hover:text-primary"
+                            to={`/projects/${projectId}/batches/${batch.id}`}
+                          >
                             {batch.name || 'Validation batch'}
-                          </p>
+                          </Link>
                           <p className="mt-1 text-xs text-muted-foreground">
                             {batch.total_jobs} images
                           </p>
@@ -226,7 +228,21 @@ export function ProjectDetailPage() {
                         <span>{batch.progress?.failed ?? 0} failed</span>
                         <span>{formatDate(batch.created_at)}</span>
                       </div>
-                    </Link>
+                      <div className="flex flex-wrap gap-2">
+                        <Link
+                          className="inline-flex h-9 items-center justify-center rounded-lg border border-border bg-surface px-3 text-sm font-semibold text-foreground transition hover:bg-muted"
+                          to={`/projects/${projectId}/batches/${batch.id}`}
+                        >
+                          Add images / Review
+                        </Link>
+                        <Link
+                          className="inline-flex h-9 items-center justify-center rounded-lg border border-border bg-surface px-3 text-sm font-semibold text-foreground transition hover:bg-muted"
+                          to={`/projects/${projectId}/batches/${batch.id}/report`}
+                        >
+                          Report
+                        </Link>
+                      </div>
+                    </article>
                   )
                 })
               ) : (
@@ -238,7 +254,7 @@ export function ProjectDetailPage() {
           </Panel>
         </div>
 
-        <aside className="grid gap-5 xl:sticky xl:top-24">
+        <aside className="grid gap-5">
           <BatchUploadPanel
             disabledReason={
               canUpload

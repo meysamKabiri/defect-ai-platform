@@ -199,6 +199,13 @@ export type BatchListResponse = {
   offset: number;
 };
 
+export type BatchCreateRequest = {
+  workspaceId: string;
+  projectId: string;
+  name?: string;
+  description?: string;
+};
+
 export type BatchUploadResponse = {
   id: string;
   workspace_id: string;

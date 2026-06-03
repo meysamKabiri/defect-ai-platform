@@ -13,6 +13,8 @@ import { ProgressBar } from '@/components/common/ProgressBar'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { useGetProjectQuery } from '@/features/admin/api/adminApi'
 import { selectCurrentWorkspace } from '@/features/auth/authSlice'
+import { BatchUploadPanel } from '@/features/detection/components/BatchUploadPanel'
+import type { BatchFeedbackItem, DetectionJobResponse, HumanFeedbackType } from '@/features/detection/detectionTypes'
 import {
   useGetBatchFeedbackQuery,
   useGetBatchProgressQuery,
@@ -43,9 +45,82 @@ function KpiTile({
   )
 }
 
+const feedbackLabels: Record<HumanFeedbackType, string> = {
+  bad_image: 'Bad Image',
+  correct: 'Correct',
+  false_positive: 'False Positive',
+  missed_defect: 'Missed Defect',
+  not_sure: 'Not Sure',
+  wrong_class: 'Wrong Class',
+}
+
+function feedbackForJob(feedbackItems: BatchFeedbackItem[], jobId?: string) {
+  if (!jobId) return []
+  return feedbackItems.filter((item) => item.job_id === jobId)
+}
+
+function feedbackSummary(items: BatchFeedbackItem[]) {
+  const labels = Array.from(new Set(items.map((item) => feedbackLabels[item.feedback_type])))
+  return labels.length ? labels.join(', ') : 'No feedback'
+}
+
+function JobReviewRow({
+  batchId,
+  feedbackItems,
+  job,
+  projectId,
+}: {
+  batchId?: string
+  feedbackItems: BatchFeedbackItem[]
+  job: DetectionJobResponse
+  projectId?: string
+}) {
+  const jobFeedback = feedbackForJob(feedbackItems, job.job_id)
+  const isReviewed = jobFeedback.length > 0
+  const detections = job.detection_count ?? job.detections?.length ?? 0
+
+  return (
+    <article className="grid min-w-0 gap-4 rounded-2xl border border-border bg-background p-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] lg:items-center">
+      <div className="min-w-0">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <FileImage className="size-4 shrink-0 text-primary" aria-hidden="true" />
+          <h2 className="min-w-0 truncate text-sm font-semibold text-foreground">
+            {job.original_filename ?? job.job_id ?? 'Inspection image'}
+          </h2>
+        </div>
+        <div className="mt-3 flex min-w-0 flex-wrap gap-2">
+          <StatusBadge status={job.status}>{job.status}</StatusBadge>
+          <StatusBadge tone={isReviewed ? 'success' : job.status === 'completed' ? 'warning' : 'default'}>
+            {isReviewed ? 'Reviewed' : job.status === 'completed' ? 'Needs review' : 'Review pending'}
+          </StatusBadge>
+        </div>
+      </div>
+
+      <div className="grid min-w-0 gap-2 text-sm text-muted-foreground sm:grid-cols-2 lg:grid-cols-1">
+        <span className="min-w-0 truncate">{detections} detection{detections === 1 ? '' : 's'}</span>
+        <span className="min-w-0 truncate">Feedback: {feedbackSummary(jobFeedback)}</span>
+        <span className="min-w-0 truncate">Created {formatDateTime(job.created_at)}</span>
+      </div>
+
+      <Link
+        className="inline-flex h-10 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-button transition hover:brightness-110"
+        to={projectId && batchId && job.job_id
+          ? `/projects/${projectId}/batches/${batchId}/jobs/${job.job_id}`
+          : '#'}
+      >
+        Review
+      </Link>
+    </article>
+  )
+}
+
 export function BatchDetailPage() {
   const { batchId, projectId } = useParams()
   const currentWorkspace = useAppSelector(selectCurrentWorkspace)
+  const canUpload =
+    currentWorkspace?.role === 'OWNER' ||
+    currentWorkspace?.role === 'ADMIN' ||
+    currentWorkspace?.role === 'ENGINEER'
   const { data: project } = useGetProjectQuery(
     {
       workspaceId: currentWorkspace?.id,
@@ -55,7 +130,14 @@ export function BatchDetailPage() {
       skip: !currentWorkspace?.id || !projectId,
     },
   )
-  const { data: batch, isFetching } = useGetBatchQuery(
+  const {
+    data: batch,
+    isError: isBatchError,
+    isFetching,
+    isLoading: isBatchLoading,
+    isUninitialized: isBatchUninitialized,
+    refetch: refetchBatch,
+  } = useGetBatchQuery(
     {
       workspaceId: currentWorkspace?.id,
       batchId,
@@ -88,9 +170,20 @@ export function BatchDetailPage() {
   const progressPercent = Math.round((resolvedProgress?.completion_rate ?? 0) * 100)
   const jobs = batch?.jobs ?? []
   const feedbackItems = feedbackData?.items ?? []
+  const reviewedJobIds = new Set(feedbackItems.map((item) => item.job_id))
+  const reviewedJobsCount = reviewedJobIds.size
   const totalDetections = jobs.reduce(
     (sum, job) => sum + (job.detection_count ?? job.detections?.length ?? 0),
     0,
+  )
+  const completedJobs = resolvedProgress?.completed ?? 0
+  const awaitingReview = Math.max(completedJobs - reviewedJobsCount, 0)
+  const batchTitle = batch?.name ?? (
+    isBatchLoading || isFetching || isBatchUninitialized
+      ? 'Loading batch...'
+      : isBatchError
+        ? 'Batch not found'
+        : 'Validation batch'
   )
 
   return (
@@ -114,7 +207,7 @@ export function BatchDetailPage() {
             <StatusBadge status={batch?.status}>{batch?.status ?? 'loading'}</StatusBadge>
           </div>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-            {batch?.name ?? (isFetching ? 'Loading batch...' : 'Batch not found')}
+            {batchTitle}
           </h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             {currentWorkspace?.name ?? 'Workspace'} / {project?.name ?? 'Project'}
@@ -129,12 +222,31 @@ export function BatchDetailPage() {
           </p>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[28rem]">
-          <KpiTile label="Images" value={batch?.total_jobs ?? 0} />
-          <KpiTile label="Completed" value={resolvedProgress?.completed ?? 0} />
+        <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[42rem]">
+          <KpiTile label="Total images" value={batch?.total_jobs ?? 0} />
+          <KpiTile label="Completed" value={completedJobs} />
           <KpiTile label="Failed" value={resolvedProgress?.failed ?? 0} />
+          <KpiTile label="Reviewed" value={reviewedJobsCount} />
+          <KpiTile label="Awaiting review" value={awaitingReview} />
+          <KpiTile label="Defects found" value={totalDetections} />
         </div>
       </section>
+
+      <BatchUploadPanel
+        batchId={batchId}
+        ctaLabel="Add Images"
+        disabledReason={
+          canUpload
+            ? undefined
+            : 'Your workspace role can view this batch, but cannot upload images.'
+        }
+        eyebrow="Batch upload"
+        isDisabled={!canUpload || !batchId || !projectId || !project?.is_active}
+        onUploaded={() => void refetchBatch()}
+        projectId={projectId ?? ''}
+        title="Add more images to this validation run"
+        workspaceId={currentWorkspace?.id}
+      />
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,24rem)]">
         <Panel eyebrow="Progress" title="Batch processing">
@@ -190,32 +302,13 @@ export function BatchDetailPage() {
         <div className="grid gap-3 p-5">
           {jobs.length ? (
             jobs.map((job) => (
-              <Link
-                className="grid gap-3 rounded-2xl border border-border bg-background p-4 md:grid-cols-[minmax(0,1fr)_auto]"
+              <JobReviewRow
+                batchId={batchId}
+                feedbackItems={feedbackItems}
+                job={job}
                 key={job.job_id}
-                to={
-                  projectId && batchId && job.job_id
-                    ? `/projects/${projectId}/batches/${batchId}/jobs/${job.job_id}`
-                    : '#'
-                }
-              >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <FileImage className="size-4 text-primary" aria-hidden="true" />
-                    <h2 className="truncate text-sm font-semibold text-foreground">
-                      {job.original_filename ?? job.job_id ?? 'Inspection image'}
-                    </h2>
-                    <StatusBadge status={job.status}>{job.status}</StatusBadge>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
-                    <span>{job.detection_count ?? job.detections?.length ?? 0} detections</span>
-                    <span>Created {formatDateTime(job.created_at)}</span>
-                  </div>
-                </div>
-                <div className="text-xs text-muted-foreground md:text-right">
-                  {job.completed_at ? `Completed ${formatDateTime(job.completed_at)}` : 'Awaiting completion'}
-                </div>
-              </Link>
+                projectId={projectId}
+              />
             ))
           ) : (
             <div className="rounded-2xl border border-border bg-background p-6 text-sm leading-6 text-muted-foreground">

@@ -1,10 +1,11 @@
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import File
-from fastapi import Form
 from fastapi import HTTPException
 from fastapi import Query
+from fastapi import Request
 from fastapi import UploadFile
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.roles import require_authenticated
@@ -14,6 +15,7 @@ from app.db.models.detection import DetectionJob
 from app.db.models.detection import InspectionBatch
 from app.db.models.user import User
 from app.repositories.project_repository import ProjectRepository
+from app.schemas.detection import BatchCreateRequest
 from app.schemas.detection import BatchListResponse
 from app.schemas.detection import BatchProgressResponse
 from app.schemas.detection import BatchResponse
@@ -31,15 +33,12 @@ upload_service = UploadService()
 
 @router.post(
     "/workspaces/{workspace_id}/batches",
-    response_model=BatchUploadResponse,
+    response_model=BatchResponse | BatchUploadResponse,
     status_code=201,
 )
-async def upload_batch(
+async def create_or_upload_batch(
     workspace_id: str,
-    files: list[UploadFile] = File(...),
-    project_id: str = Form(...),
-    name: str | None = Form(default=None),
-    description: str | None = Form(default=None),
+    request: Request,
     db: AsyncSession = Depends(get_db_session),
     current_user: User = Depends(require_authenticated()),
 ):
@@ -48,24 +47,111 @@ async def upload_batch(
         user=current_user,
         roles={WorkspaceRole.OWNER, WorkspaceRole.ADMIN, WorkspaceRole.ENGINEER},
     )
+    content_type = request.headers.get("content-type", "").lower()
+    if "multipart/form-data" in content_type:
+        form = await request.form()
+        files = [file for file in form.getlist("files") if hasattr(file, "filename")]
+        project_id = form.get("project_id")
+        if not isinstance(project_id, str) or not project_id:
+            raise HTTPException(status_code=400, detail="project_id is required")
+        await _ensure_project_in_workspace(
+            db=db,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+        try:
+            return await upload_service.upload_batch(
+                files=files,
+                db=db,
+                user_id=current_user.id,
+                workspace_id=workspace_id,
+                project_id=project_id,
+                name=_form_text(form.get("name")),
+                description=_form_text(form.get("description")),
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    try:
+        payload = BatchCreateRequest.model_validate(await request.json())
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors()) from exc
     await _ensure_project_in_workspace(
         db=db,
         workspace_id=workspace_id,
-        project_id=project_id,
+        project_id=payload.project_id,
+    )
+    created_batch = await upload_service.create_batch(
+        db=db,
+        user_id=current_user.id,
+        workspace_id=workspace_id,
+        project_id=payload.project_id,
+        name=payload.name,
+        description=payload.description,
+    )
+    service = DetectionPersistenceService(db)
+    batch = await service.get_batch(
+        batch_id=created_batch.id,
+        workspace_id=workspace_id,
+    )
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Batch not found")
+    return await _serialize_batch(service=service, batch=batch, include_jobs=False)
+
+
+@router.post(
+    "/workspaces/{workspace_id}/batches/{batch_id}/images",
+    response_model=BatchUploadResponse,
+    status_code=201,
+)
+async def add_batch_images(
+    workspace_id: str,
+    batch_id: str,
+    files: list[UploadFile] = File(...),
+    db: AsyncSession = Depends(get_db_session),
+    current_user: User = Depends(require_authenticated()),
+):
+    await WorkspaceService(db).require_membership(
+        workspace_id=workspace_id,
+        user=current_user,
+        roles={WorkspaceRole.OWNER, WorkspaceRole.ADMIN, WorkspaceRole.ENGINEER},
+    )
+    service = DetectionPersistenceService(db)
+    batch = await service.get_batch(batch_id=batch_id, workspace_id=workspace_id)
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Batch not found")
+    if batch.project_id is None:
+        raise HTTPException(status_code=400, detail="Batch is not linked to a project")
+    await _ensure_project_in_workspace(
+        db=db,
+        workspace_id=workspace_id,
+        project_id=batch.project_id,
     )
 
     try:
-        return await upload_service.upload_batch(
+        jobs = await upload_service.add_images_to_batch(
             files=files,
             db=db,
             user_id=current_user.id,
             workspace_id=workspace_id,
-            project_id=project_id,
-            name=name,
-            description=description,
+            project_id=batch.project_id,
+            batch_id=batch_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    batch = await service.get_batch(batch_id=batch_id, workspace_id=workspace_id)
+    return {
+        "id": batch.id,
+        "workspace_id": batch.workspace_id,
+        "project_id": batch.project_id,
+        "name": batch.name,
+        "description": batch.description,
+        "status": batch.status,
+        "total_jobs": batch.total_jobs,
+        "jobs": jobs,
+    }
 
 
 @router.get(
@@ -171,6 +257,12 @@ async def _ensure_project_in_workspace(
         raise HTTPException(status_code=403, detail="Project is not in this workspace")
     if not project.is_active:
         raise HTTPException(status_code=400, detail="Project is not active")
+
+
+def _form_text(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    return value or None
 
 
 async def _serialize_batch(

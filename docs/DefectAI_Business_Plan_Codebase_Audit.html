@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>DefectAI Business Plan and Codebase Audit</title>
+  <style>
+    @page { margin: 0.65in; }
+    body {
+      color: #172033;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.45;
+      margin: 0;
+    }
+    h1 { color: #0f3d5e; font-size: 24pt; margin: 0 0 8pt; }
+    h2 { border-bottom: 1px solid #d6e1ea; color: #0f3d5e; font-size: 16pt; margin: 22pt 0 8pt; padding-bottom: 4pt; }
+    h3 { color: #164e73; font-size: 12pt; margin: 14pt 0 5pt; }
+    p { margin: 0 0 7pt; }
+    ul { margin: 4pt 0 9pt 18pt; padding: 0; }
+    li { margin: 2pt 0; }
+    table { border-collapse: collapse; font-size: 8.5pt; margin: 8pt 0 14pt; width: 100%; }
+    th { background: #0f3d5e; color: white; font-weight: 700; }
+    th, td { border: 1px solid #b7c7d6; padding: 5pt; text-align: left; vertical-align: top; }
+    tr:nth-child(even) td { background: #f6f9fb; }
+    .subtitle { color: #597082; font-size: 12pt; margin-bottom: 18pt; }
+    .callout { background: #eef7f1; border: 1px solid #b8dac2; border-radius: 8px; margin: 10pt 0; padding: 9pt; }
+    .warning { background: #fff4e6; border-color: #e7c48e; }
+    .meta { color: #6b7d8d; font-size: 9pt; margin-bottom: 20pt; }
+    .page-break { page-break-before: always; }
+    code { background: #eef2f6; border-radius: 4px; padding: 1pt 3pt; }
+  </style>
+</head>
+<body>
+  <h1>DefectAI Business Plan and Codebase Audit</h1>
+  <p class="subtitle">Validation-first AI inspection for packaging defects</p>
+  <p class="meta">Generated from repository audit and the staged business plan.</p>
+
+  <div class="callout">
+    <strong>Executive status:</strong> DefectAI is close to the validation-first MVP described in the business plan. The strongest implemented pieces are workspace/project separation, batch upload, queued YOLO inference, structured prediction storage, simple feedback, CSV export, and dashboard/report UI. The highest-priority gaps are PDF reporting, buyer-facing report quality, stronger model traceability, review queue, approved examples, and manual retraining preparation.
+  </div>
+
+  <h2>Business Plan Interpretation</h2>
+  <h3>Main Product Vision</h3>
+  <p>Build a paid validation product for packaging defect inspection. Customers upload real images, AI predicts defects, operators give simple feedback, and the system produces buyer-facing validation evidence before the customer invests in production automation.</p>
+
+  <h3>MVP Boundary</h3>
+  <p>The smallest sellable workflow is: <strong>batch upload -&gt; AI prediction -&gt; simple feedback -&gt; validation report</strong>.</p>
+
+  <h3>Build Now</h3>
+  <ul>
+    <li>Customer/workspace/project setup</li>
+    <li>Batch image upload</li>
+    <li>YOLO inference</li>
+    <li>Structured prediction storage</li>
+    <li>One-click feedback</li>
+    <li>Feedback-backed CSV/PDF validation report</li>
+    <li>Fast review screens and paid pilot readiness</li>
+  </ul>
+
+  <h3>Build Next</h3>
+  <ul>
+    <li>Review queue</li>
+    <li>Approved examples</li>
+    <li>Manual retraining export/preparation</li>
+    <li>Dataset and model version metadata</li>
+  </ul>
+
+  <h3>Delay</h3>
+  <ul>
+    <li>Camera integration and edge deployment</li>
+    <li>Kubernetes, microservices, and full MLOps</li>
+    <li>Automatic retraining and automatic model promotion</li>
+    <li>Full annotation editor and enterprise features</li>
+  </ul>
+
+  <h2>Current Implementation Summary</h2>
+  <p>The codebase is a React/Vite frontend, FastAPI backend, MySQL database, Redis/RQ queue, local file storage, and YOLO worker. This matches the plan's recommended simple architecture.</p>
+  <ul>
+    <li>Backend models include workspaces, memberships, invitations, users, projects, inspection batches, detection jobs, detection boxes, and human feedback.</li>
+    <li>Backend routes cover auth, workspace/project management, single image upload, batch upload, detection jobs, feedback, batch reports, and CSV export.</li>
+    <li>Frontend supports dashboard upload/review, batch upload, recent batches, batch detail, job review, and batch report pages.</li>
+    <li>YOLO inference stores detections and annotated images, with Redis/RQ handling asynchronous work.</li>
+  </ul>
+
+  <h2>Done / Missing / Delay</h2>
+  <h3>Done</h3>
+  <ul>
+    <li>Workspace/project/user flow</li>
+    <li>Batch and single-image upload</li>
+    <li>Redis/RQ worker pipeline</li>
+    <li>YOLO inference and annotated image serving</li>
+    <li>Detection boxes persisted</li>
+    <li>Job and batch status tracking</li>
+    <li>Simple feedback types: correct, false positive, wrong class, missed defect, not sure, bad image</li>
+    <li>Batch summary and CSV export</li>
+    <li>Dashboard, batch detail, job review, and report pages</li>
+    <li>Role-based workspace permissions</li>
+  </ul>
+
+  <h3>Missing</h3>
+  <ul>
+    <li>PDF report export</li>
+    <li>Buyer-ready validation report sections</li>
+    <li>Review queue</li>
+    <li>Approved examples</li>
+    <li>Manual retraining export from approved examples</li>
+    <li>Dataset version table</li>
+    <li>Real model version table</li>
+    <li>Explicit packaging-focused defect taxonomy/project setup</li>
+    <li>Pilot readiness polish: report language, storage cleanup, audit trail, demo dataset flow</li>
+  </ul>
+
+  <h3>Delay</h3>
+  <ul>
+    <li>Camera integration</li>
+    <li>Edge deployment</li>
+    <li>Kubernetes</li>
+    <li>Automatic retraining</li>
+    <li>Full annotation editor</li>
+    <li>Enterprise SSO</li>
+    <li>Broad multi-industry platform features</li>
+    <li>Full MLOps/model registry UI</li>
+  </ul>
+
+  <h2 class="page-break">Gap Analysis</h2>
+  <table>
+    <thead>
+      <tr><th>Requirement</th><th>Status</th><th>Related Files</th><th>Missing Pieces</th><th>Risk / Concern</th><th>Priority</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Workspace/customer separation</td><td>Done</td><td><code>workspace.py</code>, <code>workspaces.py</code>, workspace frontend</td><td>Business naming still uses workspace, not customer/account</td><td>Good enough for MVP</td><td>High</td></tr>
+      <tr><td>Project/pilot setup</td><td>Done</td><td><code>project.py</code>, <code>workspaces.py</code>, admin/project pages</td><td>Pilot metadata, defect taxonomy, paid pilot status</td><td>Projects are generic</td><td>High</td></tr>
+      <tr><td>Batch upload</td><td>Done</td><td><code>batches.py</code>, <code>upload_service.py</code>, <code>BatchUploadPanel.tsx</code></td><td>Upload limits, duplicate handling, batch pre-validation</td><td>Large batches may stress local storage/RQ</td><td>High</td></tr>
+      <tr><td>AI inference</td><td>Done</td><td><code>tasks.py</code>, <code>detection_pipeline_service.py</code>, <code>yolo_detector.py</code></td><td>Explicit model version registry and provenance</td><td><code>best.pt</code> is implicit and gitignored</td><td>High</td></tr>
+      <tr><td>Structured prediction storage</td><td>Partially done</td><td><code>DetectionBox</code>, <code>DetectionJob</code>, repository persistence</td><td>Dedicated AI prediction naming, reliable model version</td><td>Traceability weak if multiple models are used</td><td>High</td></tr>
+      <tr><td>Prediction review screen</td><td>Done</td><td><code>ImageViewer.tsx</code>, <code>DetectionCard.tsx</code>, <code>JobReviewPage.tsx</code></td><td>Review queue navigation</td><td>Good MVP coverage</td><td>High</td></tr>
+      <tr><td>Simple feedback buttons</td><td>Done</td><td><code>DetectionCard.tsx</code>, <code>JobReviewPage.tsx</code>, feedback API</td><td>Consistent dashboard vs job-detail UX</td><td>Dashboard feedback is job-level; detail supports box-level</td><td>High</td></tr>
+      <tr><td>Feedback storage</td><td>Done</td><td><code>HumanFeedback</code>, <code>detection.py</code>, repository</td><td>Audit history if needed</td><td>Latest-only behavior loses feedback history</td><td>High</td></tr>
+      <tr><td>CSV report export</td><td>Done</td><td><code>reports.py</code>, <code>BatchReportPage.tsx</code></td><td>Polished buyer-facing formatting</td><td>Useful but not yet a polished deliverable</td><td>High</td></tr>
+      <tr><td>PDF report export</td><td>Not implemented</td><td>None</td><td>PDF endpoint, template, frontend download</td><td>Business plan says PDF/CSV is must-have</td><td>High</td></tr>
+      <tr><td>Validation report summary</td><td>Partially done</td><td><code>reports.py</code>, report schemas, report page</td><td>Operational value, ROI/time saved, confidence distribution, next steps</td><td>Current report is technical, not buyer-ready</td><td>High</td></tr>
+      <tr><td>Review queue</td><td>Not implemented</td><td>Batch/job pages approximate review</td><td><code>review_tasks</code> model, routes, queue UI, escalation rules</td><td>Important next stage, not first blocker</td><td>Medium</td></tr>
+      <tr><td>Approved examples</td><td>Not implemented</td><td>None</td><td><code>approved_annotations</code>, expert approval UI, export</td><td>Needed before retraining, not before first pilot</td><td>Medium</td></tr>
+      <tr><td>Manual retraining preparation</td><td>Not implemented</td><td><code>ml/scripts/convert_voc_to_yolo.py</code></td><td>YOLO export from approved annotations, training docs</td><td>Do not automate yet</td><td>Medium</td></tr>
+      <tr><td>Dataset versions</td><td>Should be delayed</td><td>None</td><td><code>dataset_versions</code>, frozen snapshots</td><td>Later than review/approved examples</td><td>Low</td></tr>
+      <tr><td>Model versions</td><td>Partially done</td><td><code>DetectionJob.model_name</code>, <code>model_version</code></td><td><code>model_versions</code> table, active model per project</td><td>Nullable strings are not enough for comparison</td><td>Medium</td></tr>
+      <tr><td>Paid pilot readiness</td><td>Partially done</td><td>Workspace/project/batch/report flow</td><td>PDF report, report language, cleanup, audit trail, demo flow</td><td>Technically close but not sales-ready</td><td>High</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Phased Implementation Roadmap</h2>
+  <h3>Phase 1: Stabilize Current Validation MVP</h3>
+  <p><strong>Goal:</strong> make the existing batch/prediction/feedback/report flow reliable enough for demos and paid diagnostics.</p>
+  <ul>
+    <li><strong>Frontend:</strong> keep stable 3-column dashboard, improve empty/loading/error states, make upload/review navigation predictable.</li>
+    <li><strong>Backend:</strong> add tests around batch upload, job completion, feedback, and reports.</li>
+    <li><strong>Database:</strong> no new tables.</li>
+    <li><strong>API:</strong> keep current routes.</li>
+    <li><strong>Acceptance:</strong> upload 50+ images, process jobs, submit feedback, export CSV without manual DB fixes.</li>
+    <li><strong>Do not build:</strong> review queue, retraining, model registry.</li>
+  </ul>
+
+  <h3>Phase 2: Structured Prediction And Feedback Storage</h3>
+  <ul>
+    <li><strong>Goal:</strong> make prediction/feedback data trustworthy for reports.</li>
+    <li><strong>Frontend:</strong> make dashboard feedback clearly job-level; keep detailed feedback in job review.</li>
+    <li><strong>Backend:</strong> populate model name/version on completion; test latest feedback behavior.</li>
+    <li><strong>Database:</strong> avoid new version tables unless necessary now.</li>
+    <li><strong>Acceptance:</strong> every prediction row is traceable to model metadata and feedback.</li>
+    <li><strong>Do not build:</strong> model registry UI.</li>
+  </ul>
+
+  <h3>Phase 3: Review Workflow And Operator Feedback Improvement</h3>
+  <ul>
+    <li><strong>Goal:</strong> give operators a fast review path without annotation burden.</li>
+    <li><strong>Frontend:</strong> add reviewed/unreviewed filters and next/previous image navigation.</li>
+    <li><strong>Backend:</strong> add reviewed/unreviewed job filters.</li>
+    <li><strong>Database:</strong> no review task table yet unless simple filters are insufficient.</li>
+    <li><strong>Acceptance:</strong> operators can review a batch quickly with one-click feedback.</li>
+    <li><strong>Do not build:</strong> expert approval or annotation editor.</li>
+  </ul>
+
+  <h3>Phase 4: Validation Report PDF/CSV</h3>
+  <ul>
+    <li><strong>Goal:</strong> produce a buyer-facing deliverable.</li>
+    <li><strong>Frontend:</strong> add Export PDF beside CSV; improve report language.</li>
+    <li><strong>Backend:</strong> add PDF generator service and confidence/operational summary fields.</li>
+    <li><strong>Database:</strong> no new tables unless storing report snapshots becomes necessary.</li>
+    <li><strong>API:</strong> add <code>GET /workspaces/{workspace_id}/projects/{project_id}/batches/{batch_id}/export.pdf</code>.</li>
+    <li><strong>Acceptance:</strong> founder can send a PDF report to a pilot prospect.</li>
+    <li><strong>Do not build:</strong> automated ROI calculator beyond simple report text.</li>
+  </ul>
+
+  <h3>Phase 5: Review Queue And Approved Examples</h3>
+  <ul>
+    <li><strong>Goal:</strong> separate raw feedback from training-quality examples.</li>
+    <li><strong>Frontend:</strong> add review queue page and simple expert approval form.</li>
+    <li><strong>Backend:</strong> add review task and approved annotation services/routes.</li>
+    <li><strong>Database:</strong> add <code>review_tasks</code> and <code>approved_annotations</code>.</li>
+    <li><strong>Acceptance:</strong> raw feedback never directly becomes training data.</li>
+    <li><strong>Do not build:</strong> full annotation editor.</li>
+  </ul>
+
+  <h3>Phase 6: Manual Retraining Preparation</h3>
+  <ul>
+    <li><strong>Goal:</strong> make offline retraining possible without automating it.</li>
+    <li><strong>Frontend:</strong> add export approved examples action.</li>
+    <li><strong>Backend:</strong> add YOLO export service and manual training docs.</li>
+    <li><strong>Acceptance:</strong> approved examples can train a customer-specific YOLO model manually.</li>
+    <li><strong>Do not build:</strong> automatic retraining or promotion.</li>
+  </ul>
+
+  <h3>Phase 7: Dataset/Model Versioning</h3>
+  <ul>
+    <li><strong>Goal:</strong> track frozen training sets and trained models after approved examples exist.</li>
+    <li><strong>Backend/DB:</strong> add <code>dataset_versions</code>, <code>model_versions</code>, and active model selection per project.</li>
+    <li><strong>Frontend:</strong> minimal read-only model/version info.</li>
+    <li><strong>Acceptance:</strong> reports can compare model A vs model B.</li>
+    <li><strong>Do not build:</strong> full MLOps UI.</li>
+  </ul>
+
+  <h3>Phase 8: Production/Pilot Hardening</h3>
+  <ul>
+    <li><strong>Goal:</strong> make paid pilots safe and repeatable.</li>
+    <li><strong>Tasks:</strong> audit logs, backups, storage cleanup, stronger file validation, seed/demo data, onboarding checklist.</li>
+    <li><strong>Acceptance:</strong> run 2-3 paid pilots without babysitting every step.</li>
+    <li><strong>Do not build:</strong> enterprise SSO, camera/edge, Kubernetes.</li>
+  </ul>
+
+  <h2>Next 5 Concrete Coding Tasks</h2>
+  <ol>
+    <li>Add backend tests for batch upload, report summary, and CSV using current models and fake jobs.</li>
+    <li>Ensure <code>model_name</code> and <code>model_version</code> are populated when a job completes.</li>
+    <li>Improve <code>BatchReportPage</code> and <code>reports.py</code> with buyer-facing sections: dataset summary, AI output, feedback analysis, performance recommendation, and next steps.</li>
+    <li>Add PDF export endpoint and frontend PDF download button.</li>
+    <li>Add reviewed/unreviewed filtering and next-image workflow for batch review.</li>
+  </ol>
+
+  <h2>Architectural Concerns</h2>
+  <ul>
+    <li><code>DetectionBox</code> effectively serves as <code>ai_predictions</code>, but missing model-version linkage will become confusing. Add explicit model metadata before pilots.</li>
+    <li>Raw feedback is collapsed to latest per job/box. This is good for simple reports but weak for auditability.</li>
+    <li><code>model_version</code> is a nullable string, not a real model version entity. Acceptable now, but fix before retraining comparisons.</li>
+    <li>Batch upload enqueues one RQ job per image and stores files locally. Fine for pilots, but add file limits and cleanup before large datasets.</li>
+    <li>UI copy should shift from broad industrial platform language toward packaging inspection validation and paid pilot reports.</li>
+    <li>The report is the buying artifact. Do not let review queue, approved examples, or retraining distract from report quality.</li>
+  </ul>
+
+  <div class="callout warning">
+    <strong>Scope rule:</strong> every new feature should help close a paid pilot, improve the validation report, or reduce operator effort. Otherwise delay it.
+  </div>
+</body>
+</html>
