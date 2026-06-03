@@ -2,12 +2,17 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { Spinner } from '@/components/common/Spinner'
 import { ROUTES } from '@/constants/routes'
 import { useAppSelector } from '@/app/hooks'
-import { selectAuthStatus, selectIsAuthenticated } from '@/features/auth/authSlice'
+import {
+  selectAuthStatus,
+  selectIsAuthenticated,
+  selectNeedsWorkspaceSelection,
+} from '@/features/auth/authSlice'
 
 export function ProtectedRoute() {
   const location = useLocation()
   const status = useAppSelector(selectAuthStatus)
   const isAuthenticated = useAppSelector(selectIsAuthenticated)
+  const needsWorkspaceSelection = useAppSelector(selectNeedsWorkspaceSelection)
 
   if (status === 'checking') {
     return (
@@ -19,6 +24,10 @@ export function ProtectedRoute() {
 
   if (!isAuthenticated) {
     return <Navigate to={ROUTES.auth} replace state={{ from: location }} />
+  }
+
+  if (needsWorkspaceSelection && location.pathname !== ROUTES.selectWorkspace) {
+    return <Navigate to={ROUTES.selectWorkspace} replace state={{ from: location }} />
   }
 
   return <Outlet />

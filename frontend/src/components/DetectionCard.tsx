@@ -21,6 +21,9 @@ type DetectionCardProps = {
   feedbackItems?: HumanFeedbackResponse[]
   isLoading?: boolean
   isSubmittingFeedback?: boolean
+  canSubmitFeedback?: boolean
+  feedbackDisabledReason?: string
+  feedbackSavedMessage?: string
   onSubmitFeedback?: (feedbackType: HumanFeedbackType) => void
 }
 
@@ -106,8 +109,11 @@ function EmptyDetectionState({
 }
 
 export function DetectionCard({
+  canSubmitFeedback: canSubmitFeedbackAction = true,
   error,
+  feedbackDisabledReason,
   feedbackItems = [],
+  feedbackSavedMessage,
   isLoading,
   isSubmittingFeedback,
   job,
@@ -124,6 +130,7 @@ export function DetectionCard({
     job?.processing_time_seconds
   const status = job?.status ?? result?.status ?? 'idle'
   const canSubmitFeedback =
+    canSubmitFeedbackAction &&
     Boolean(job?.job_id ?? result?.jobId) &&
     status === 'completed' &&
     !isLoading &&
@@ -132,11 +139,12 @@ export function DetectionCard({
 
   return (
     <Panel
+      className="min-h-0"
       action={<StatusBadge status={status}>{status}</StatusBadge>}
       eyebrow="Output"
       title="Detection results"
     >
-      <div className="grid gap-5 p-5">
+      <div className="grid min-w-0 gap-5 p-5">
         {error && (
           <div className="flex gap-3 rounded-2xl border border-danger/20 bg-danger/10 p-4 text-sm leading-6 text-danger">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
@@ -144,7 +152,7 @@ export function DetectionCard({
           </div>
         )}
 
-        <div className="rounded-2xl border border-border bg-background">
+        <div className="min-w-0 rounded-2xl border border-border bg-background">
           <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
             <div className="flex min-w-0 items-center gap-3">
               <div
@@ -176,7 +184,7 @@ export function DetectionCard({
               <EmptyDetectionState isLoading={isLoading} />
             </div>
           ) : (
-            <div className="max-h-[26rem] overflow-auto">
+            <div className="max-h-[26rem] min-h-0 overflow-auto">
               {defects.map((defect, index) => {
                 const label = defect.label ?? defect.class_name
                 const confidenceTone = getConfidenceTone(defect.confidence)
@@ -211,7 +219,7 @@ export function DetectionCard({
           )}
         </div>
 
-        <div className="rounded-2xl border border-border bg-background p-4">
+        <div className="min-w-0 rounded-2xl border border-border bg-background p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h3 className="text-sm font-semibold text-foreground">Operator feedback</h3>
@@ -221,17 +229,28 @@ export function DetectionCard({
             </div>
             {latestFeedback ? (
               <StatusBadge tone="primary">
-                Latest: {feedbackLabelByType[latestFeedback.feedback_type]}
+                Saved: {feedbackLabelByType[latestFeedback.feedback_type]}
               </StatusBadge>
             ) : (
               <StatusBadge tone="warning">Unreviewed</StatusBadge>
             )}
           </div>
 
+          {feedbackSavedMessage ? (
+            <div className="mt-4 rounded-xl border border-success/30 bg-success/10 px-3 py-2 text-sm font-medium text-success">
+              {feedbackSavedMessage}
+            </div>
+          ) : null}
+
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             {feedbackOptions.map((option) => (
               <button
-                className="min-h-10 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold text-foreground transition hover:border-primary/40 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-60"
+                className={cn(
+                  'min-h-10 rounded-xl border px-3 py-2 text-sm font-semibold transition hover:border-primary/40 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-60',
+                  latestFeedback?.feedback_type === option.value
+                    ? 'border-primary/50 bg-primary/10 text-primary'
+                    : 'border-border bg-surface text-foreground',
+                )}
                 disabled={!canSubmitFeedback || isSubmittingFeedback}
                 key={option.value}
                 onClick={() => onSubmitFeedback?.(option.value)}
@@ -244,12 +263,12 @@ export function DetectionCard({
 
           {!canSubmitFeedback ? (
             <p className="mt-3 text-xs leading-5 text-muted-foreground">
-              Feedback unlocks after a completed detection job is loaded.
+              {feedbackDisabledReason ?? 'Feedback unlocks after a completed detection job is loaded.'}
             </p>
           ) : null}
         </div>
 
-        <details className="rounded-2xl border border-border bg-background p-4">
+        <details className="min-w-0 rounded-2xl border border-border bg-background p-4">
           <summary className="cursor-pointer text-sm font-semibold text-foreground">
             Job details
           </summary>

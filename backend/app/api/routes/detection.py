@@ -12,6 +12,7 @@ from fastapi import (
     status as http_status,
 )
 from fastapi.responses import FileResponse
+from sqlalchemy import inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.roles import require_job_access
@@ -19,6 +20,7 @@ from app.api.dependencies.roles import require_permissions
 from app.core.config import settings
 from app.core.database import get_db_session
 from app.core.permissions import Permission
+from app.core.workspace_roles import WorkspaceRole
 from app.db.models.detection import DetectionBox
 from app.db.models.detection import DetectionJob
 from app.db.models.detection import HumanFeedback
@@ -30,6 +32,7 @@ from app.schemas.detection import HumanFeedbackListResponse
 from app.schemas.detection import HumanFeedbackResponse
 from app.schemas.detection import PersistedDetectionJobResponse
 from app.services.detection_persistence_service import DetectionPersistenceService
+from app.services.event_publisher import publish_workspace_event
 from app.repositories.project_repository import ProjectRepository
 from app.services.workspace_service import WorkspaceService
 from app.services.upload_service import UploadService
@@ -70,6 +73,7 @@ async def upload_image(
         await WorkspaceService(db).require_membership(
             workspace_id=project.workspace_id,
             user=current_user,
+            roles={WorkspaceRole.OWNER, WorkspaceRole.ADMIN, WorkspaceRole.ENGINEER},
         )
 
         return await upload_service.upload_image(
@@ -77,6 +81,7 @@ async def upload_image(
             db=db,
             user_id=current_user.id,
             project_id=project_id,
+            workspace_id=project.workspace_id,
         )
 
     except ValueError as e:
@@ -106,10 +111,7 @@ async def list_job_feedback(
     feedback_items = await persistence_service.list_feedback(job_id=job.id)
 
     return {
-        "items": [
-            _serialize_feedback(feedback)
-            for feedback in feedback_items
-        ],
+        "items": [_serialize_feedback(feedback) for feedback in feedback_items],
     }
 
 
@@ -125,6 +127,24 @@ async def create_job_feedback(
     current_user: User = Depends(require_permissions(Permission.JOB_READ)),
 ):
     persistence_service = DetectionPersistenceService(db)
+    if job.project_id is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="Job feedback requires a workspace-scoped project",
+        )
+
+    project = await ProjectRepository(db).get_project(job.project_id)
+    if project is None or project.workspace_id is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="Job feedback requires a workspace-scoped project",
+        )
+
+    await WorkspaceService(db).require_membership(
+        workspace_id=project.workspace_id,
+        user=current_user,
+        roles={WorkspaceRole.OWNER, WorkspaceRole.ADMIN, WorkspaceRole.ENGINEER},
+    )
 
     if payload.detection_box_id is not None:
         belongs_to_job = await persistence_service.detection_box_belongs_to_job(
@@ -146,7 +166,27 @@ async def create_job_feedback(
         comment=payload.comment,
     )
     await db.commit()
-    await db.refresh(feedback)
+    feedback = await persistence_service.get_feedback(feedback_id=feedback.id)
+    if feedback is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Feedback was saved but could not be loaded",
+        )
+    await publish_workspace_event(
+        event_type="feedback.created",
+        workspace_id=project.workspace_id,
+        project_id=job.project_id,
+        batch_id=job.batch_id,
+        job_id=job.id,
+        feedback_id=feedback.id,
+    )
+    if job.batch_id is not None:
+        await publish_workspace_event(
+            event_type="report.updated",
+            workspace_id=project.workspace_id,
+            project_id=job.project_id,
+            batch_id=job.batch_id,
+        )
 
     return _serialize_feedback(feedback)
 
@@ -255,13 +295,16 @@ def _serialize_job(
         rq_job_id=job.rq_job_id,
         status=job.status,
         project_id=job.project_id,
+        batch_id=job.batch_id,
         original_filename=job.original_filename,
-        image_url=f"/api/v1/detect/jobs/{job.id}/image/original"
-        if job.image_url
-        else None,
-        annotated_image_url=f"/api/v1/detect/jobs/{job.id}/image/annotated"
-        if job.annotated_image_url
-        else None,
+        image_url=(
+            f"/api/v1/detect/jobs/{job.id}/image/original" if job.image_url else None
+        ),
+        annotated_image_url=(
+            f"/api/v1/detect/jobs/{job.id}/image/annotated"
+            if job.annotated_image_url
+            else None
+        ),
         processing_time_seconds=job.processing_time_seconds,
         detection_count=job.detection_count,
         error=job.error_message,
@@ -270,8 +313,7 @@ def _serialize_job(
         started_at=job.started_at,
         completed_at=job.completed_at,
         detections=[
-            _serialize_detection_box(detection)
-            for detection in job.detections
+            _serialize_detection_box(detection) for detection in job.detections
         ],
     )
 
@@ -321,11 +363,19 @@ def _serialize_detection_box(
 def _serialize_feedback(
     feedback: HumanFeedback,
 ) -> HumanFeedbackResponse:
+    unloaded = inspect(feedback).unloaded
+    detection_box = None if "detection_box" in unloaded else feedback.detection_box
+    reviewer = None if "reviewer" in unloaded else feedback.reviewer
+
     return HumanFeedbackResponse(
         id=feedback.id,
         job_id=feedback.job_id,
         detection_box_id=feedback.detection_box_id,
         reviewer_id=feedback.reviewer_id,
+        reviewer_name=reviewer.full_name if reviewer else None,
+        reviewer_email=reviewer.email if reviewer else None,
+        predicted_class=detection_box.class_name if detection_box else None,
+        confidence=detection_box.confidence if detection_box else None,
         feedback_type=feedback.feedback_type,
         corrected_class_name=feedback.corrected_class_name,
         comment=feedback.comment,

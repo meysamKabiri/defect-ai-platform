@@ -53,6 +53,12 @@ class User(Base):
         nullable=False,
     )
 
+    is_platform_admin: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+    )
+
     token_version: Mapped[int] = mapped_column(
         Integer,
         default=0,

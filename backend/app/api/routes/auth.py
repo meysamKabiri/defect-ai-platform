@@ -126,7 +126,7 @@ async def login(
         raise
 
     _clear_failed_logins(rate_limit_key)
-    refresh_token = session.pop("refreshToken")
+    refresh_token = session["refreshToken"]
     _set_refresh_cookie(response, refresh_token)
 
     return session
@@ -158,7 +158,7 @@ async def refresh(
         db=db,
         refresh_token=refresh_token,
     )
-    new_refresh_token = session.pop("refreshToken")
+    new_refresh_token = session["refreshToken"]
     _set_refresh_cookie(response, new_refresh_token)
 
     return session
@@ -167,11 +167,19 @@ async def refresh(
 @router.get(
     "/me",
     response_model=UserResponse,
+    response_model_exclude_none=True,
 )
 async def me(
     current_user=Depends(get_current_user),
 ):
-    return current_user
+    payload = {
+        "id": current_user.id,
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+    }
+    if current_user.is_platform_admin:
+        payload["platform_admin"] = True
+    return payload
 
 
 @router.post("/logout")

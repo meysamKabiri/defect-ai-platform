@@ -8,7 +8,7 @@ from fastapi import Response
 from fastapi import status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies.roles import require_super_admin
+from app.api.dependencies.roles import require_platform_admin
 from app.core.database import get_db_session
 from app.core.roles import UserRole
 from app.db.models.user import User
@@ -40,7 +40,7 @@ async def list_users(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db_session),
-    _: User = Depends(require_super_admin()),
+    _: User = Depends(require_platform_admin()),
 ):
     service = AdminService(db)
     users, total = await service.list_users(
@@ -65,7 +65,7 @@ async def list_users(
 )
 async def create_user(
     payload: AdminCreateUserRequest,
-    _: User = Depends(require_super_admin()),
+    _: User = Depends(require_platform_admin()),
 ):
     raise HTTPException(
         status_code=status.HTTP_410_GONE,
@@ -81,7 +81,7 @@ async def update_user_role(
     user_id: str,
     payload: UpdateUserRoleRequest,
     db: AsyncSession = Depends(get_db_session),
-    actor: User = Depends(require_super_admin()),
+    actor: User = Depends(require_platform_admin()),
 ):
     return await AdminService(db).update_user_role(
         actor=actor,
@@ -98,7 +98,7 @@ async def update_user_status(
     user_id: str,
     payload: UpdateUserStatusRequest,
     db: AsyncSession = Depends(get_db_session),
-    actor: User = Depends(require_super_admin()),
+    actor: User = Depends(require_platform_admin()),
 ):
     return await AdminService(db).update_user_status(
         actor=actor,
@@ -115,7 +115,7 @@ async def delete_user(
     user_id: str,
     response: Response,
     db: AsyncSession = Depends(get_db_session),
-    actor: User = Depends(require_super_admin()),
+    actor: User = Depends(require_platform_admin()),
 ):
     await AdminService(db).delete_user(actor=actor, user_id=user_id)
     response.status_code = status.HTTP_204_NO_CONTENT
@@ -127,7 +127,7 @@ async def delete_user(
     response_model=list[str],
 )
 async def list_roles(
-    _: Annotated[User, Depends(require_super_admin())],
+    _: Annotated[User, Depends(require_platform_admin())],
 ):
     return [role.value for role in UserRole]
 
@@ -143,7 +143,7 @@ async def list_projects(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db_session),
-    _: User = Depends(require_super_admin()),
+    _: User = Depends(require_platform_admin()),
 ):
     service = AdminService(db)
     projects, total = await service.list_projects(
@@ -168,7 +168,7 @@ async def list_projects(
 )
 async def create_project(
     payload: ProjectCreateRequest,
-    _: User = Depends(require_super_admin()),
+    _: User = Depends(require_platform_admin()),
 ):
     raise HTTPException(
         status_code=status.HTTP_410_GONE,
@@ -183,7 +183,7 @@ async def create_project(
 async def update_project(
     project_id: str,
     payload: ProjectUpdateRequest,
-    _: User = Depends(require_super_admin()),
+    _: User = Depends(require_platform_admin()),
 ):
     raise HTTPException(
         status_code=status.HTTP_410_GONE,
@@ -198,7 +198,7 @@ async def update_project(
 async def delete_project(
     project_id: str,
     response: Response,
-    _: User = Depends(require_super_admin()),
+    _: User = Depends(require_platform_admin()),
 ):
     raise HTTPException(
         status_code=status.HTTP_410_GONE,

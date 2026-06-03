@@ -44,7 +44,7 @@ class AdminService:
         actor: User,
         payload: AdminCreateUserRequest,
     ) -> User:
-        if not can_manage_role(actor, payload.role):
+        if not _can_manage_platform_role(actor, payload.role):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You cannot create users with this role",
@@ -84,7 +84,7 @@ class AdminService:
                 detail="You cannot change your own role",
             )
 
-        if not can_manage_role(actor, user.role) or not can_manage_role(actor, role):
+        if not _can_manage_platform_role(actor, user.role) or not _can_manage_platform_role(actor, role):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You cannot assign or manage this role",
@@ -111,7 +111,7 @@ class AdminService:
                 detail="You cannot change your own active status",
             )
 
-        if not can_manage_role(actor, user.role):
+        if not _can_manage_platform_role(actor, user.role):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You cannot manage this user",
@@ -137,7 +137,7 @@ class AdminService:
                 detail="You cannot delete your own user",
             )
 
-        if not can_manage_role(actor, user.role):
+        if not _can_manage_platform_role(actor, user.role):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You cannot delete this user",
@@ -182,6 +182,13 @@ class AdminService:
         await self.session.commit()
         await self.session.refresh(project)
         return project
+
+    async def get_project(
+        self,
+        project_id: str,
+        workspace_id: str | None = None,
+    ) -> Project:
+        return await self._get_project_or_404(project_id, workspace_id=workspace_id)
 
     async def update_project(
         self,
@@ -235,3 +242,7 @@ class AdminService:
                 detail="Project not found",
             )
         return project
+
+
+def _can_manage_platform_role(actor: User, role: UserRole) -> bool:
+    return actor.is_platform_admin or can_manage_role(actor, role)

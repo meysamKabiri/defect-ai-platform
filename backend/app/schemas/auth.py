@@ -1,6 +1,5 @@
 from pydantic import BaseModel, EmailStr
 
-from app.core.roles import UserRole
 from app.schemas.workspace import WorkspaceMembershipSummary
 
 
@@ -19,7 +18,7 @@ class UserResponse(BaseModel):
     id: str
     email: EmailStr
     full_name: str | None = None
-    role: UserRole
+    platform_admin: bool | None = None
 
     class Config:
         from_attributes = True

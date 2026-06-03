@@ -22,6 +22,8 @@ export type AdminProject = {
   name: string
   description?: string | null
   owner_id?: string | null
+  owner_email?: string | null
+  owner_full_name?: string | null
   workspace_id?: string | null
   is_active: boolean
   created_at: string

@@ -16,7 +16,8 @@ export const tokenStorage = {
   },
 
   getRefreshToken() {
-    return null
+    if (!canUseStorage()) return null
+    return window.localStorage.getItem(REFRESH_TOKEN_KEY)
   },
 
   getUser(): AuthUser | null {
@@ -48,16 +49,54 @@ export const tokenStorage = {
   setSession(_tokens: unknown, user?: AuthUser | null, currentWorkspace?: WorkspaceSummary | null) {
     if (!canUseStorage()) return
 
+    const tokens = _tokens as { accessToken?: string | null; refreshToken?: string | null } | null
+
     window.localStorage.removeItem(ACCESS_TOKEN_KEY)
     window.localStorage.removeItem(REFRESH_TOKEN_KEY)
+
+    if (tokens?.accessToken) {
+      window.localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken)
+    }
+
+    if (tokens?.refreshToken) {
+      window.localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken)
+    }
 
     if (user) {
       window.localStorage.setItem(USER_KEY, JSON.stringify(user))
     }
 
     if (currentWorkspace) {
-      window.localStorage.setItem(WORKSPACE_KEY, JSON.stringify(currentWorkspace))
+      this.setCurrentWorkspace(currentWorkspace)
     }
+  },
+
+  setCurrentWorkspace(workspace: WorkspaceSummary | null) {
+    if (!canUseStorage()) return
+
+    if (workspace) {
+      window.localStorage.setItem(WORKSPACE_KEY, JSON.stringify(workspace))
+    } else {
+      window.localStorage.removeItem(WORKSPACE_KEY)
+    }
+  },
+
+  resolveCurrentWorkspace(workspaces: WorkspaceSummary[]) {
+    const savedWorkspace = this.getCurrentWorkspace()
+    if (savedWorkspace) {
+      const validWorkspace = workspaces.find((workspace) => workspace.id === savedWorkspace.id)
+      if (validWorkspace) {
+        return validWorkspace
+      }
+
+      this.setCurrentWorkspace(null)
+    }
+
+    if (workspaces.length === 1) {
+      return workspaces[0]
+    }
+
+    return null
   },
 
   clearSession() {

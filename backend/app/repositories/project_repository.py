@@ -2,6 +2,7 @@ from sqlalchemy import Select
 from sqlalchemy import func
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.db.models.project import Project
 
@@ -33,7 +34,7 @@ class ProjectRepository:
         project_id: str,
         workspace_id: str | None = None,
     ) -> Project | None:
-        statement = select(Project).where(Project.id == project_id)
+        statement = select(Project).options(selectinload(Project.owner)).where(Project.id == project_id)
         if workspace_id is not None:
             statement = statement.where(Project.workspace_id == workspace_id)
         result = await self.session.execute(statement)
@@ -49,7 +50,7 @@ class ProjectRepository:
         limit: int = 20,
         offset: int = 0,
     ) -> tuple[list[Project], int]:
-        statement: Select[tuple[Project]] = select(Project)
+        statement: Select[tuple[Project]] = select(Project).options(selectinload(Project.owner))
 
         if search:
             statement = statement.where(Project.name.ilike(f"%{search}%"))

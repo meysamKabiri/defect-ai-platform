@@ -121,11 +121,12 @@ export function UploadZone({
 
   return (
     <Panel
+      className="min-w-0"
       action={<StatusBadge status={status}>{status}</StatusBadge>}
       eyebrow="Input"
       title="Inspection image"
     >
-      <div className="grid gap-4 p-5">
+      <div className="grid min-w-0 gap-4 p-5">
         <div
           {...getRootProps()}
           className={cn(
@@ -153,7 +154,7 @@ export function UploadZone({
 
             <p className="text-base font-semibold text-foreground">
               {isDisabled
-                ? 'Select a project first'
+                ? disabledReason ? 'Upload unavailable' : 'Select a project first'
                 : isDragActive
                   ? 'Drop image to inspect'
                   : 'Drop image or browse'}
@@ -170,7 +171,7 @@ export function UploadZone({
         </div>
 
         {file ? (
-          <div className="rounded-2xl border border-border bg-background p-4">
+          <div className="min-w-0 rounded-2xl border border-border bg-background p-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">

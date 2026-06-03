@@ -80,7 +80,23 @@ export const adminApi = baseApi.injectEndpoints({
           params: queryParams,
         }
       },
-      providesTags: ['AdminProjects'],
+      providesTags: (result, _error, params) => [
+        'AdminProjects',
+        'Projects',
+        { type: 'Projects', id: params?.workspaceId ?? 'default' },
+        ...(result?.items.map((project) => ({ type: 'Project' as const, id: project.id })) ?? []),
+      ],
+    }),
+
+    getProject: builder.query<AdminProject, { workspaceId?: string; projectId: string }>({
+      query: ({ workspaceId, projectId }) =>
+        workspaceId
+          ? `/workspaces/${workspaceId}/projects/${projectId}`
+          : `/admin/projects/${projectId}`,
+      providesTags: (_result, _error, { projectId }) => [
+        { type: 'AdminProjects', id: projectId },
+        { type: 'Project', id: projectId },
+      ],
     }),
 
     createProject: builder.mutation<AdminProject, CreateProjectPayload & { workspaceId?: string }>({
@@ -89,7 +105,11 @@ export const adminApi = baseApi.injectEndpoints({
         method: 'POST',
         body,
       }),
-      invalidatesTags: ['AdminProjects'],
+      invalidatesTags: (_result, _error, { workspaceId }) => [
+        'AdminProjects',
+        'Projects',
+        { type: 'Projects', id: workspaceId ?? 'default' },
+      ],
     }),
 
     updateProject: builder.mutation<AdminProject, { projectId: string; workspaceId?: string; body: UpdateProjectPayload }>({
@@ -98,7 +118,12 @@ export const adminApi = baseApi.injectEndpoints({
         method: 'PATCH',
         body,
       }),
-      invalidatesTags: ['AdminProjects'],
+      invalidatesTags: (_result, _error, { projectId, workspaceId }) => [
+        'AdminProjects',
+        'Projects',
+        { type: 'Projects', id: workspaceId ?? 'default' },
+        { type: 'Project', id: projectId },
+      ],
     }),
 
     deleteProject: builder.mutation<void, string | { projectId: string; workspaceId?: string }>({
@@ -110,12 +135,24 @@ export const adminApi = baseApi.injectEndpoints({
           method: 'DELETE',
         }
       },
-      invalidatesTags: ['AdminProjects'],
+      invalidatesTags: (_result, _error, arg) => {
+        const projectId = typeof arg === 'string' ? arg : arg.projectId
+        const workspaceId = typeof arg === 'string' ? undefined : arg.workspaceId
+        return [
+          'AdminProjects',
+          'Projects',
+          { type: 'Projects' as const, id: workspaceId ?? 'default' },
+          { type: 'Project' as const, id: projectId },
+        ]
+      },
     }),
 
     getWorkspaceMembers: builder.query<{ items: WorkspaceMember[] }, string>({
       query: (workspaceId) => `/workspaces/${workspaceId}/members`,
-      providesTags: ['WorkspaceMembers'],
+      providesTags: (_result, _error, workspaceId) => [
+        'WorkspaceMembers',
+        { type: 'WorkspaceMembers', id: workspaceId },
+      ],
     }),
 
     inviteWorkspaceUser: builder.mutation<WorkspaceInvitation, { workspaceId: string; email: string; role: WorkspaceRole }>({
@@ -124,12 +161,20 @@ export const adminApi = baseApi.injectEndpoints({
         method: 'POST',
         body,
       }),
-      invalidatesTags: ['WorkspaceInvitations', 'WorkspaceMembers'],
+      invalidatesTags: (_result, _error, { workspaceId }) => [
+        'WorkspaceInvitations',
+        { type: 'WorkspaceInvitations', id: workspaceId },
+        'WorkspaceMembers',
+        { type: 'WorkspaceMembers', id: workspaceId },
+      ],
     }),
 
     getWorkspaceInvitations: builder.query<{ items: WorkspaceInvitation[] }, string>({
       query: (workspaceId) => `/workspaces/${workspaceId}/invitations`,
-      providesTags: ['WorkspaceInvitations'],
+      providesTags: (_result, _error, workspaceId) => [
+        'WorkspaceInvitations',
+        { type: 'WorkspaceInvitations', id: workspaceId },
+      ],
     }),
 
     revokeInvitation: builder.mutation<WorkspaceInvitation, { workspaceId: string; invitationId: string }>({
@@ -137,7 +182,10 @@ export const adminApi = baseApi.injectEndpoints({
         url: `/workspaces/${workspaceId}/invitations/${invitationId}/revoke`,
         method: 'POST',
       }),
-      invalidatesTags: ['WorkspaceInvitations'],
+      invalidatesTags: (_result, _error, { workspaceId }) => [
+        'WorkspaceInvitations',
+        { type: 'WorkspaceInvitations', id: workspaceId },
+      ],
     }),
 
     resendInvitation: builder.mutation<WorkspaceInvitation, { workspaceId: string; invitationId: string }>({
@@ -145,7 +193,10 @@ export const adminApi = baseApi.injectEndpoints({
         url: `/workspaces/${workspaceId}/invitations/${invitationId}/resend`,
         method: 'POST',
       }),
-      invalidatesTags: ['WorkspaceInvitations'],
+      invalidatesTags: (_result, _error, { workspaceId }) => [
+        'WorkspaceInvitations',
+        { type: 'WorkspaceInvitations', id: workspaceId },
+      ],
     }),
 
     updateMemberRole: builder.mutation<WorkspaceMember, { workspaceId: string; userId: string; role: WorkspaceRole }>({
@@ -154,7 +205,10 @@ export const adminApi = baseApi.injectEndpoints({
         method: 'PATCH',
         body: { role },
       }),
-      invalidatesTags: ['WorkspaceMembers'],
+      invalidatesTags: (_result, _error, { workspaceId }) => [
+        'WorkspaceMembers',
+        { type: 'WorkspaceMembers', id: workspaceId },
+      ],
     }),
 
     removeMember: builder.mutation<WorkspaceMember, { workspaceId: string; userId: string }>({
@@ -162,7 +216,10 @@ export const adminApi = baseApi.injectEndpoints({
         url: `/workspaces/${workspaceId}/members/${userId}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['WorkspaceMembers'],
+      invalidatesTags: (_result, _error, { workspaceId }) => [
+        'WorkspaceMembers',
+        { type: 'WorkspaceMembers', id: workspaceId },
+      ],
     }),
   }),
 })
@@ -172,6 +229,7 @@ export const {
   useCreateProjectMutation,
   useDeleteAdminUserMutation,
   useDeleteProjectMutation,
+  useGetProjectQuery,
   useGetWorkspaceInvitationsQuery,
   useGetWorkspaceMembersQuery,
   useInviteWorkspaceUserMutation,

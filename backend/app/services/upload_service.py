@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.job_store import create_job
 from app.core.queue import queue
 from app.services.detection_persistence_service import DetectionPersistenceService
+from app.services.event_publisher import publish_workspace_event
 from app.services.image_service import ImageService
 
 logger = logging.getLogger(__name__)
@@ -18,12 +19,44 @@ class UploadService:
 
         self.image_service = ImageService()
 
+    async def create_batch(
+        self,
+        *,
+        db: AsyncSession,
+        user_id: str,
+        workspace_id: str,
+        project_id: str,
+        name: str | None = None,
+        description: str | None = None,
+    ):
+        persistence_service = DetectionPersistenceService(db)
+        batch = await persistence_service.create_batch(
+            workspace_id=workspace_id,
+            project_id=project_id,
+            created_by_user_id=user_id,
+            name=name,
+            description=description,
+            total_jobs=0,
+        )
+        await db.commit()
+        await db.refresh(batch)
+        await publish_workspace_event(
+            event_type="batch.created",
+            workspace_id=workspace_id,
+            project_id=project_id,
+            batch_id=batch.id,
+            status=batch.status,
+        )
+        return batch
+
     async def upload_image(
         self,
         file: UploadFile,
         db: AsyncSession,
         user_id: str,
         project_id: str | None = None,
+        batch_id: str | None = None,
+        workspace_id: str | None = None,
     ):
 
         saved_image = await self.image_service.save_image(file)
@@ -37,6 +70,7 @@ class UploadService:
             image_url=saved_image["file_url"],
             user_id=user_id,
             project_id=project_id,
+            batch_id=batch_id,
         )
         await db.commit()
 
@@ -60,6 +94,15 @@ class UploadService:
                 error_message=str(e),
             )
             await db.commit()
+            if workspace_id is not None:
+                await publish_workspace_event(
+                    event_type="job.failed",
+                    workspace_id=workspace_id,
+                    project_id=project_id,
+                    batch_id=batch_id,
+                    job_id=job_id,
+                    status="failed",
+                )
 
             raise RuntimeError(str(e))
 
@@ -75,6 +118,15 @@ class UploadService:
         )
 
         logger.info(f"Detection job queued: {job_id}")
+        if workspace_id is not None:
+            await publish_workspace_event(
+                event_type="job.created",
+                workspace_id=workspace_id,
+                project_id=project_id,
+                batch_id=batch_id,
+                job_id=job_id,
+                status="queued",
+            )
 
         return {
             "success": True,
@@ -82,3 +134,108 @@ class UploadService:
             "status": "queued",
             "message": "Detection job queued",
         }
+
+    async def upload_batch(
+        self,
+        *,
+        files: list[UploadFile],
+        db: AsyncSession,
+        user_id: str,
+        workspace_id: str,
+        project_id: str,
+        name: str | None = None,
+        description: str | None = None,
+    ):
+        persistence_service = DetectionPersistenceService(db)
+        batch = await self.create_batch(
+            db=db,
+            user_id=user_id,
+            workspace_id=workspace_id,
+            project_id=project_id,
+            name=name,
+            description=description,
+        )
+
+        jobs = await self.add_images_to_batch(
+            files=files,
+            db=db,
+            user_id=user_id,
+            workspace_id=workspace_id,
+            project_id=project_id,
+            batch_id=batch.id,
+        )
+
+        batch = await persistence_service.get_batch(
+            batch_id=batch.id,
+            workspace_id=workspace_id,
+        )
+
+        return {
+            "id": batch.id if batch else None,
+            "workspace_id": workspace_id,
+            "project_id": project_id,
+            "name": name,
+            "description": description,
+            "status": batch.status if batch else "queued",
+            "total_jobs": batch.total_jobs if batch else len(jobs),
+            "jobs": jobs,
+        }
+
+    async def add_images_to_batch(
+        self,
+        *,
+        files: list[UploadFile],
+        db: AsyncSession,
+        user_id: str,
+        workspace_id: str,
+        project_id: str,
+        batch_id: str,
+    ) -> list[dict]:
+        if not files:
+            raise ValueError("At least one image is required")
+        for file in files:
+            self.image_service.validate_extension(file.filename)
+
+        persistence_service = DetectionPersistenceService(db)
+        batch = await persistence_service.get_batch(
+            batch_id=batch_id,
+            workspace_id=workspace_id,
+        )
+        if batch is None:
+            raise ValueError("Batch not found")
+        if batch.project_id != project_id:
+            raise ValueError("Batch does not belong to this project")
+
+        jobs = []
+        for file in files:
+            response = await self.upload_image(
+                file=file,
+                db=db,
+                user_id=user_id,
+                project_id=project_id,
+                batch_id=batch_id,
+                workspace_id=workspace_id,
+            )
+            jobs.append(
+                {
+                    "job_id": response["job_id"],
+                    "status": response["status"],
+                    "original_filename": file.filename,
+                }
+            )
+
+        await persistence_service.increment_batch_total_jobs(
+            batch_id=batch_id,
+            workspace_id=workspace_id,
+            count=len(jobs),
+        )
+        await db.commit()
+
+        await publish_workspace_event(
+            event_type="batch.updated",
+            workspace_id=workspace_id,
+            project_id=project_id,
+            batch_id=batch_id,
+            status="queued",
+        )
+        return jobs

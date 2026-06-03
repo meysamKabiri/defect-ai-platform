@@ -13,6 +13,8 @@ import { ThemeToggle } from '@/components/common/ThemeToggle'
 import { ROUTES } from '@/constants/routes'
 import { useLogoutMutation } from '@/features/auth/api/authApi'
 import { selectCurrentUser, selectCurrentWorkspace } from '@/features/auth/authSlice'
+import { WorkspaceEventListener } from '@/features/workspaces/components/WorkspaceEventListener'
+import { WorkspaceSwitcher } from '@/features/workspaces/components/WorkspaceSwitcher'
 import type { WorkspaceRole } from '@/features/auth/types'
 import { cn } from '@/lib/utils'
 
@@ -20,6 +22,7 @@ type NavItem = {
   label: string
   href: string
   icon: typeof LayoutDashboard
+  platformAdminOnly?: boolean
   roles?: WorkspaceRole[]
 }
 
@@ -39,17 +42,24 @@ const navItems: NavItem[] = [
     label: 'Roles',
     href: ROUTES.roles,
     icon: Shield,
-    roles: ['OWNER'],
+    platformAdminOnly: true,
   },
   {
     label: 'Projects',
     href: ROUTES.projects,
     icon: FolderKanban,
-    roles: ['OWNER', 'ADMIN'],
   },
 ]
 
-function canSeeItem(workspaceRole: WorkspaceRole | undefined, item: NavItem) {
+function canSeeItem(
+  workspaceRole: WorkspaceRole | undefined,
+  isPlatformAdmin: boolean,
+  item: NavItem,
+) {
+  if (item.platformAdminOnly) {
+    return isPlatformAdmin
+  }
+
   return !item.roles || (workspaceRole ? item.roles.includes(workspaceRole) : false)
 }
 
@@ -57,7 +67,9 @@ export function AppLayout() {
   const user = useAppSelector(selectCurrentUser)
   const currentWorkspace = useAppSelector(selectCurrentWorkspace)
   const [logout, { isLoading }] = useLogoutMutation()
-  const visibleItems = navItems.filter((item) => canSeeItem(currentWorkspace?.role, item))
+  const visibleItems = navItems.filter((item) =>
+    canSeeItem(currentWorkspace?.role, Boolean(user?.platform_admin), item),
+  )
   const shouldShowAside = visibleItems.length > 1
 
   return (
@@ -104,6 +116,7 @@ export function AppLayout() {
       )}
 
       <div className="min-w-0">
+        <WorkspaceEventListener />
         <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur">
           <div className="flex min-h-16 flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
             <div className="flex min-w-0 items-center gap-3">
@@ -112,6 +125,7 @@ export function AppLayout() {
                   <Shield className="size-5" aria-hidden="true" />
                 </div>
               )}
+              <WorkspaceSwitcher />
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase text-muted-foreground">
                   {shouldShowAside ? 'Secure workspace' : 'Defect AI'}

@@ -79,6 +79,17 @@ def require_super_admin() -> Callable[..., User]:
     return require_roles(UserRole.SUPER_ADMIN)
 
 
+def require_platform_admin() -> Callable[..., User]:
+    async def platform_admin_checker(
+        current_user: Annotated[User, Depends(get_current_user)],
+    ) -> User:
+        if not current_user.is_platform_admin:
+            raise forbidden_exception("Platform administrator access is required")
+        return current_user
+
+    return platform_admin_checker
+
+
 def require_engineer() -> Callable[..., User]:
     return require_roles(UserRole.ADMIN, UserRole.ENGINEER)
 

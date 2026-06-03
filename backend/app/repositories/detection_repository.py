@@ -3,6 +3,7 @@ from datetime import timezone
 from typing import Any
 
 from sqlalchemy import Select
+from sqlalchemy import distinct
 from sqlalchemy import func
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +12,7 @@ from sqlalchemy.orm import selectinload
 from app.db.models.detection import DetectionBox
 from app.db.models.detection import DetectionJob
 from app.db.models.detection import HumanFeedback
+from app.db.models.detection import InspectionBatch
 from app.db.models.project import Project
 
 
@@ -28,6 +30,7 @@ class DetectionRepository:
         rq_job_id: str | None = None,
         user_id: str | None = None,
         project_id: str | None = None,
+        batch_id: str | None = None,
     ) -> DetectionJob:
         job = DetectionJob(
             id=job_id,
@@ -37,10 +40,163 @@ class DetectionRepository:
             image_url=image_url,
             user_id=user_id,
             project_id=project_id,
+            batch_id=batch_id,
         )
         self.session.add(job)
         await self.session.flush()
         return job
+
+    async def create_batch(
+        self,
+        *,
+        workspace_id: str,
+        project_id: str | None,
+        created_by_user_id: str | None,
+        name: str | None,
+        description: str | None,
+        total_jobs: int,
+    ) -> InspectionBatch:
+        batch = InspectionBatch(
+            workspace_id=workspace_id,
+            project_id=project_id,
+            created_by_user_id=created_by_user_id,
+            name=name,
+            description=description,
+            status="queued",
+            total_jobs=total_jobs,
+        )
+        self.session.add(batch)
+        await self.session.flush()
+        return batch
+
+    async def increment_batch_total_jobs(
+        self,
+        *,
+        batch_id: str,
+        workspace_id: str,
+        count: int,
+    ) -> InspectionBatch | None:
+        batch = await self.get_batch(batch_id=batch_id, workspace_id=workspace_id)
+        if batch is None:
+            return None
+
+        batch.total_jobs += count
+        if count > 0:
+            batch.status = "queued"
+            batch.completed_at = None
+        await self.session.flush()
+        return batch
+
+    async def get_batch(
+        self,
+        *,
+        batch_id: str,
+        workspace_id: str,
+        include_jobs: bool = False,
+    ) -> InspectionBatch | None:
+        statement = select(InspectionBatch).where(
+            InspectionBatch.id == batch_id,
+            InspectionBatch.workspace_id == workspace_id,
+        ).options(
+            selectinload(InspectionBatch.workspace),
+            selectinload(InspectionBatch.project),
+            selectinload(InspectionBatch.created_by),
+        )
+        if include_jobs:
+            statement = statement.options(
+                selectinload(InspectionBatch.jobs).selectinload(DetectionJob.detections),
+                selectinload(InspectionBatch.jobs)
+                .selectinload(DetectionJob.feedback)
+                .selectinload(HumanFeedback.reviewer),
+                selectinload(InspectionBatch.jobs)
+                .selectinload(DetectionJob.feedback)
+                .selectinload(HumanFeedback.detection_box),
+                selectinload(InspectionBatch.jobs).selectinload(DetectionJob.user),
+            )
+        result = await self.session.execute(statement)
+        return result.scalar_one_or_none()
+
+    async def list_batches(
+        self,
+        *,
+        workspace_id: str,
+        project_id: str | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[InspectionBatch], int]:
+        statement = (
+            select(InspectionBatch)
+            .where(InspectionBatch.workspace_id == workspace_id)
+            .options(
+                selectinload(InspectionBatch.workspace),
+                selectinload(InspectionBatch.project),
+                selectinload(InspectionBatch.created_by),
+            )
+        )
+        if project_id is not None:
+            statement = statement.where(InspectionBatch.project_id == project_id)
+
+        count_statement = select(func.count()).select_from(statement.subquery())
+        total_result = await self.session.execute(count_statement)
+        total = total_result.scalar_one()
+
+        page_statement = (
+            statement.order_by(InspectionBatch.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        page_result = await self.session.execute(page_statement)
+        return list(page_result.scalars()), total
+
+    async def batch_status_counts(self, *, batch_id: str) -> dict[str, int]:
+        statement = (
+            select(DetectionJob.status, func.count(DetectionJob.id))
+            .where(DetectionJob.batch_id == batch_id)
+            .group_by(DetectionJob.status)
+        )
+        result = await self.session.execute(statement)
+        return {status: count for status, count in result.all()}
+
+    async def batch_class_counts(self, *, batch_id: str) -> list[tuple[str, int]]:
+        statement = (
+            select(DetectionBox.class_name, func.count(DetectionBox.id))
+            .join(DetectionJob, DetectionBox.job_id == DetectionJob.id)
+            .where(DetectionJob.batch_id == batch_id)
+            .group_by(DetectionBox.class_name)
+            .order_by(func.count(DetectionBox.id).desc())
+        )
+        result = await self.session.execute(statement)
+        return [(class_name, count) for class_name, count in result.all()]
+
+    async def batch_feedback_counts(self, *, batch_id: str) -> list[tuple[str, int]]:
+        statement = (
+            select(HumanFeedback.feedback_type, func.count(HumanFeedback.id))
+            .join(DetectionJob, HumanFeedback.job_id == DetectionJob.id)
+            .where(DetectionJob.batch_id == batch_id)
+            .group_by(HumanFeedback.feedback_type)
+            .order_by(func.count(HumanFeedback.id).desc())
+        )
+        result = await self.session.execute(statement)
+        return [(feedback_type, count) for feedback_type, count in result.all()]
+
+    async def batch_detection_totals(self, *, batch_id: str) -> tuple[int, float | None]:
+        statement = (
+            select(func.count(DetectionBox.id), func.avg(DetectionBox.confidence))
+            .join(DetectionJob, DetectionBox.job_id == DetectionJob.id)
+            .where(DetectionJob.batch_id == batch_id)
+        )
+        result = await self.session.execute(statement)
+        count, average_confidence = result.one()
+        return count, average_confidence
+
+    async def batch_reviewed_jobs_count(self, *, batch_id: str) -> int:
+        statement = (
+            select(func.count(distinct(HumanFeedback.job_id)))
+            .join(DetectionJob, HumanFeedback.job_id == DetectionJob.id)
+            .where(DetectionJob.batch_id == batch_id)
+        )
+        result = await self.session.execute(statement)
+        return result.scalar_one()
 
     async def get_job(
         self,
@@ -208,30 +364,96 @@ class DetectionRepository:
         corrected_class_name: str | None = None,
         comment: str | None = None,
     ) -> HumanFeedback:
-        feedback = HumanFeedback(
-            job_id=job_id,
-            detection_box_id=detection_box_id,
-            reviewer_id=reviewer_id,
-            feedback_type=feedback_type,
-            corrected_class_name=corrected_class_name,
-            comment=comment,
+        statement = select(HumanFeedback).where(HumanFeedback.job_id == job_id)
+        if detection_box_id is None:
+            statement = statement.where(HumanFeedback.detection_box_id.is_(None))
+        else:
+            statement = statement.where(HumanFeedback.detection_box_id == detection_box_id)
+
+        result = await self.session.execute(
+            statement.order_by(HumanFeedback.created_at.desc()),
         )
-        self.session.add(feedback)
+        existing_feedback = list(result.scalars())
+        feedback = existing_feedback[0] if existing_feedback else None
+
+        if feedback is None:
+            feedback = HumanFeedback(
+                job_id=job_id,
+                detection_box_id=detection_box_id,
+                reviewer_id=reviewer_id,
+                feedback_type=feedback_type,
+                corrected_class_name=corrected_class_name,
+                comment=comment,
+            )
+            self.session.add(feedback)
+        else:
+            feedback.reviewer_id = reviewer_id
+            feedback.feedback_type = feedback_type
+            feedback.corrected_class_name = corrected_class_name
+            feedback.comment = comment
+            feedback.created_at = datetime.now(timezone.utc)
+
+        for duplicate_feedback in existing_feedback[1:]:
+            await self.session.delete(duplicate_feedback)
+
         await self.session.flush()
         return feedback
+
+    async def get_feedback(self, *, feedback_id: str) -> HumanFeedback | None:
+        statement = (
+            select(HumanFeedback)
+            .options(
+                selectinload(HumanFeedback.reviewer),
+                selectinload(HumanFeedback.detection_box),
+                selectinload(HumanFeedback.job),
+            )
+            .where(HumanFeedback.id == feedback_id)
+        )
+        result = await self.session.execute(statement)
+        return result.scalar_one_or_none()
 
     async def list_feedback(
         self,
         *,
         job_id: str,
     ) -> list[HumanFeedback]:
+        feedback_items = await self._list_feedback_rows(
+            HumanFeedback.job_id == job_id,
+        )
+        return self._latest_feedback_items(feedback_items)
+
+    async def list_batch_feedback(self, *, batch_id: str) -> list[HumanFeedback]:
+        return await self._list_feedback_rows(DetectionJob.batch_id == batch_id)
+
+    async def _list_feedback_rows(self, *where_clauses: Any) -> list[HumanFeedback]:
         statement = (
             select(HumanFeedback)
-            .where(HumanFeedback.job_id == job_id)
+            .join(DetectionJob, HumanFeedback.job_id == DetectionJob.id)
+            .options(
+                selectinload(HumanFeedback.reviewer),
+                selectinload(HumanFeedback.detection_box),
+                selectinload(HumanFeedback.job),
+            )
+            .where(*where_clauses)
             .order_by(HumanFeedback.created_at.desc())
         )
         result = await self.session.execute(statement)
         return list(result.scalars())
+
+    def _latest_feedback_items(
+        self,
+        feedback_items: list[HumanFeedback],
+    ) -> list[HumanFeedback]:
+        latest_by_target: dict[tuple[str, str | None], HumanFeedback] = {}
+        for item in sorted(
+            feedback_items,
+            key=lambda feedback: feedback.created_at,
+            reverse=True,
+        ):
+            target = (item.job_id, item.detection_box_id)
+            if target not in latest_by_target:
+                latest_by_target[target] = item
+        return list(latest_by_target.values())
 
     def _job_filter_statement(
         self,
